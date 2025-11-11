@@ -83,18 +83,35 @@ Optional environment variables:
 
 ## Usage
 
+**⚠️ Important**: Before running any experiment, use the `--dry-run` flag to preview the number of API calls and understand the experiment configuration. This helps you plan your experiments carefully and avoid unexpected costs.
+
 ### Perception Experiments
 
 Test how well models perceive visual information across different modalities:
 
 ```bash
 cd perception
+# First, preview the experiment with --dry-run
+uv run python run_modality_vision_experiment.py \
+  --challenge-ids 13e47133 0934a4d8 135a2760 136b0064 142ca369 \
+  --dry-run
+
+# Then run the actual experiment
 uv run python run_modality_vision_experiment.py \
   --challenge-ids 13e47133 0934a4d8 135a2760 136b0064 142ca369 \
   --rpm 60
 ```
 
 This tests all modalities (row_only, col_only, ascii, json, image_14x14, image_15x15, image_16x16, image_17x17, image_24x24, image_768x768) and generates detailed descriptions of what the model sees.
+
+**Note**: By default, the script processes only the **input** grid from the first training example (`E0:input`), matching what was reported in the paper. 
+
+The `--grid-types` argument allows specifying which examples to process:
+- `E0:input` - Training example 0, input grid (default)
+- `E0:output` - Training example 0, output grid  
+- `E1:input` - Training example 1, input grid
+- `T0:input` - Test example 0, input grid
+- Use `--grid-types E0:input E0:output` to process both grids from training example 0
 
 See `perception/README.md` for detailed documentation.
 
@@ -105,6 +122,13 @@ Test how modality choice affects hypothesis generation and execution. Our reason
 **Single modality experiment:**
 ```bash
 cd generate-execute
+# First, preview the experiment with --dry-run
+uv run python run_single_modality_experiment.py \
+  --challenge-id 13e47133 \
+  --modality-type row_col_json_image \
+  --dry-run
+
+# Then run the actual experiment
 uv run python run_single_modality_experiment.py \
   --challenge-id 13e47133 \
   --modality-type row_col_json_image \
@@ -114,6 +138,12 @@ uv run python run_single_modality_experiment.py \
 **Cross-order experiment (tests both ascending and descending example orders):**
 ```bash
 cd generate-execute
+# First, preview the experiment with --dry-run
+uv run python run_double_modality_experiment.py \
+  --challenge-id 13e47133 \
+  --dry-run
+
+# Then run the actual experiment
 uv run python run_double_modality_experiment.py \
   --challenge-id 13e47133 \
   --rpm 60
@@ -141,7 +171,7 @@ See `generate-execute/README.md` for specific commands to reproduce each experim
 
 The repository includes ARC-AGI challenge datasets:
 - `data/arc-prize-2024/`: ARC Prize 2024 challenges and solutions
-- `data/arc-prize-2025/`: ARC Prize 2025 challenges and solutions
+- `data/arc-prize-2025/`: ARC Prize 2025 challenges and solutions (default)
 
 Each dataset includes:
 - `arc-agi_training_challenges.json`: Training challenges
@@ -149,6 +179,18 @@ Each dataset includes:
 - `arc-agi_test_challenges.json`: Test challenges
 - `arc-agi_evaluation_challenges.json`: Evaluation challenges
 - `arc-agi_evaluation_solutions.json`: Evaluation solutions
+
+**Note**: By default, scripts use the ARC Prize 2025 evaluation dataset. To use other datasets (e.g., ARC Prize 2024, training sets, or ARC-1), use the `--challenges-file` argument:
+
+```bash
+# Use ARC Prize 2024 dataset
+--challenges-file data/arc-prize-2024/arc-agi_evaluation_challenges.json
+
+# Use training set
+--challenges-file data/arc-prize-2025/arc-agi_training_challenges.json
+```
+
+If a solutions file exists in the same directory (e.g., `arc-agi_evaluation_solutions.json`), it will be automatically loaded to provide ground truth outputs for test cases.
 
 ## Architecture
 

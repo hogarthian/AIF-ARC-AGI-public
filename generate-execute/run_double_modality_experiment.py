@@ -3,23 +3,31 @@ Modality experiment script: Test all modality types with ascending/descending or
 
 For each modality type:
 1. Generate hypothesis with ascending order
-2. Generate hypothesis with descending order
+2. (optional) Generate hypothesis with descending order (if --order both or --order descending)
 3. Run held-out validation (leave-one-out on training examples)
 4. Run follow_instructions for each test case with same modality
-5. Score results and store individual scores for plotting
-6. Save all outputs including reasoning_content and plots
+5. (optional) Run reduced context version (if --include-reduced) for held-out validation and test cases
+6. Score results and store individual scores for plotting
+7. Save all outputs including reasoning_content and plots
 
 API Call Pattern:
-- Outer loop: 7 modalities × 2 orders = 14 combinations
+- Outer loop: num_modalities × num_orders combinations
+  - Default: 11 modalities × 1 order (ascending) = 11 combinations
+  - With --order both: 11 modalities × 2 orders = 22 combinations
+  - With --modality-types: custom number of modalities
 - Per combination:
   - 1 API call for hypothesis generation
-  - For each training example: 2 calls (ascending + descending order) × num_train
-  - For each test case: 2 calls (ascending + descending order) × num_test
-  - Same for "reduced" version (no training examples in context)
-- Total API calls ≈ 14 × (1 + 2×num_train + 2×num_test + 2×num_train + 2×num_test)
-  Example: 14 × (1 + 2×3 + 2×2 + 2×3 + 2×2) = 14 × 21 = 294 calls
+  - num_train calls for held-out validation
+  - num_test calls for test cases
+  - (if --include-reduced) num_train + num_test calls for reduced context versions
+- Total API calls = num_modalities × num_orders × (1 + num_train + num_test + [if reduced: num_train + num_test])
+  Example (challenge 13e47133, 3 train, 2 test, all modalities, both orders, with reduced):
+    11 × 2 × (1 + 3 + 2 + 3 + 2) = 11 × 2 × 11 = 242 calls
+  Example (challenge 13e47133, 3 train, 2 test, all modalities, ascending only, no reduced):
+    11 × 1 × (1 + 3 + 2) = 11 × 6 = 66 calls
 - All calls are sequential (no parallelization) and may hit rate limits
 - Use --rpm flag to enable rate limiting (recommended: 60-120 RPM)
+- Use --dry-run to preview API call count before running
 
 Output structure:
 - {challenge_id}/{timestamp}/
@@ -31,23 +39,39 @@ Output structure:
     - hypothesis.json (LLM response + reasoning_content)
     - grids.json (all grids: E0, E1, T0, T1 as keys, each with input/expected/ascending/descending)
     - results.json (all scores: E0, E1, T0, T1 as keys, each with similarity scores and metadata)
+    - grids_reduced.json, results_reduced.json (if --include-reduced)
 
 Usage:
-uv runpython test_modality_experiment.py --challenge-id <challenge_id> --output-dir <output_dir> --challenges-file <challenges_file> --model <model> --temperature <temperature> --rpm <rpm> --resume-from-dir <resume_from_dir>
+uv run python run_double_modality_experiment.py --challenge-id <challenge_id> [options]
+
+Options:
+  --challenge-id: Challenge ID to test (required)
+  --output-dir: Base output directory (default: modality_experiment_results)
+  --challenges-file: Path to challenges JSON file (optional)
+  --model: Model to use (default: gemini/gemini-2.5-pro)
+  --temperature: Temperature setting (default: 0.3)
+  --rpm: Maximum requests per minute for rate limiting (recommended: 60-120)
+  --resume-from-dir: Path to previous output directory to resume from
+  --order: Order to test - "ascending" (default), "descending", or "both"
+  --include-reduced: Include reduced context versions (no training examples in context)
+  --modality-types: Specific modality types to test (default: all)
+  --dry-run: Preview experiment configuration without making LLM calls
 
 Example:
-# New experiment
-uv run python test_modality_experiment.py --challenge-id 13e47133 --rpm 60
+# New experiment (all modalities, ascending order)
+uv run python run_double_modality_experiment.py --challenge-id 13e47133 --rpm 60
+
+# Full experiment (all modalities, both orders, with reduced)
+uv run python run_double_modality_experiment.py --challenge-id 13e47133 --order both --include-reduced --rpm 60
+
+# Test specific modalities only
+uv run python run_double_modality_experiment.py --challenge-id 13e47133 --modality-types row_only col_only --rpm 60
 
 # Resume from previous run
-uv run python test_modality_experiment.py --challenge-id 13e47133 --resume-from-dir modality_experiment_results/13e47133/20241101_1200 --rpm 60
+uv run python run_double_modality_experiment.py --challenge-id 13e47133 --resume-from-dir modality_experiment_results/13e47133/20241101_1200 --rpm 60
 
-candidate challenges: 
-Medium:
-13e47133: 3 Examples + 1 Test, 238 API calls
-142ca369: 3 Examples + 1 Test, 238 API calls
-Hard:
-0934a4d8: 4 Examples + 1 Test, 294 API calls
+# Dry-run to preview configuration
+uv run python run_double_modality_experiment.py --challenge-id 13e47133 --dry-run
 """
 
 import argparse
@@ -82,9 +106,9 @@ except ImportError:
         yield
 
 from src import logger, get_run_log_file
-from src.utils.data_loader import load_challenge, DEFAULT_CHALLENGES_FILE, DEFAULT_SOLUTIONS_FILE
+from src.utils.data_loader import load_challenge, DEFAULT_CHALLENGES_FILE, DEFAULT_SOLUTIONS_FILE, resolve_challenges_path
 from src.utils.modality_encoder import create_prompt_messages
-from src.utils.follow_instructions import follow_instructions_twice
+from src.utils.follow_instructions import follow_instructions_to_generate_grid
 # We'll patch litellm.acompletion after setting up rate limiter
 from src.utils.scoring_engine import get_grid_similarity
 from src.nodes.models import TransformationWithUncertainty
@@ -160,6 +184,10 @@ MODALITY_TYPES = [
     "row_image",
     "col_image",
     "row_col_image",
+    "json_only",
+    "row_col_json",
+    "row_col_json_image",
+    "image_json",
 ]
 
 
@@ -209,7 +237,8 @@ async def generate_hypothesis(
     example_order: int | None = None,
     model: str = GEMINI_MODEL,
     temperature: float = TEMPERATURE,
-    session_id: Optional[str] = None
+    session_id: Optional[str] = None,
+    dry_run: bool = False
 ) -> Tuple[TransformationWithUncertainty, str | None]:
     """
     Generate hypothesis using Gemini with specified modality and order.
@@ -220,10 +249,13 @@ async def generate_hypothesis(
         example_order: Example order (None for ascending, -1 for descending)
         model: Model to use (defaults to GEMINI_MODEL)
         temperature: Temperature setting (defaults to TEMPERATURE)
+        dry_run: If True, skip LLM call and return placeholder belief
     
     Returns:
         (belief, reasoning_content)
     """
+    global _progress_tracker
+    
     order_name = "desc" if example_order == -1 else "asc"
     step_name = f"Hypothesis: {modality_type} ({order_name})"
     
@@ -232,6 +264,31 @@ async def generate_hypothesis(
     # Get number of examples for dynamic model creation
     num_train = len(challenge_data.train)
     num_test = len(challenge_data.test)
+    
+    if dry_run:
+        # Return placeholder belief in dry-run mode
+        logger.info(f"  [DRY-RUN] Would generate hypothesis for {modality_type} ({order_name})")
+        # Create placeholder transform_instructions
+        placeholder_instructions = {"general": "[DRY-RUN] Placeholder general instruction"}
+        for i in range(num_train):
+            placeholder_instructions[f"E{i}"] = f"[DRY-RUN] Placeholder instruction for E{i}"
+        for i in range(num_test):
+            placeholder_instructions[f"T{i}"] = f"[DRY-RUN] Placeholder instruction for T{i}"
+        
+        # Create a minimal belief object
+        belief = TransformationWithUncertainty(
+            working_hypothesis="[DRY-RUN] Placeholder working hypothesis",
+            transform_instructions=placeholder_instructions,
+            uncertainty="[DRY-RUN] Placeholder uncertainty",
+            notebook="[DRY-RUN] Placeholder notebook"
+        )
+        reasoning_content = "[DRY-RUN] Placeholder reasoning content"
+        
+        if _progress_tracker:
+            await _progress_tracker.increment(step_name + " (dry-run)")
+            _progress_tracker.print_progress()
+        
+        return belief, reasoning_content
     
     # Create dynamic model for this challenge
     DynamicModel = TransformationWithUncertainty.create_dynamic_model(num_train, num_test)
@@ -284,7 +341,6 @@ async def generate_hypothesis(
     reasoning_content = getattr(response.choices[0].message, 'reasoning_content', None)
     
     # Update progress tracker after successful API call
-    global _progress_tracker
     if _progress_tracker:
         await _progress_tracker.increment(step_name)
         _progress_tracker.print_progress()
@@ -298,7 +354,8 @@ async def run_held_out_validation_reduced(
     modality_type: str,
     example_order: int | None,
     output_dir: Path,
-    session_id: Optional[str] = None
+    session_id: Optional[str] = None,
+    dry_run: bool = False
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     """
     Run held-out validation (leave-one-out) for a modality + order combination with reduced context.
@@ -374,58 +431,63 @@ async def run_held_out_validation_reduced(
         try:
             step_name = f"Hold-out E{held_out_idx} reduced: {modality_type} ({order_name[:3]})"
             
-            # Apply transform_instructions twice with reduced context (no training examples)
-            asc_grid, asc_uncertainty, asc_reasoning, desc_grid, desc_uncertainty, desc_reasoning = await follow_instructions_twice(
-                instructions=held_out_instructions,
-                training_examples=context_examples,  # Passed but not used in modality
-                test_input_grid=held_out_example.input,
-                challenge_data=challenge_data,
-                is_held_out=True,
-                working_hypothesis=working_hypothesis,
-                modality_type=modality_type,
-                include_training_examples=False,  # Reduced mode: no training examples
-                session_id=session_id
-            )
+            if dry_run:
+                logger.info(f"      [DRY-RUN] Would generate grid for held-out example {held_out_idx} (reduced)")
+                grid = [[0]]  # Placeholder grid
+                uncertainty = "[DRY-RUN] Placeholder uncertainty"
+                reasoning = "[DRY-RUN] Placeholder reasoning"
+            else:
+                # Apply transform_instructions with specified order and reduced context (no training examples)
+                grid, uncertainty, reasoning = await follow_instructions_to_generate_grid(
+                    instructions=held_out_instructions,
+                    training_examples=context_examples,  # Passed but not used in modality
+                    test_input_grid=held_out_example.input,
+                    challenge_data=challenge_data,
+                    is_held_out=True,
+                    example_order=example_order,
+                    working_hypothesis=working_hypothesis,
+                    modality_type=modality_type,
+                    include_training_examples=False,  # Reduced mode: no training examples
+                    session_id=session_id
+                )
             
-            # Increment for both API calls (ascending + descending order) after successful completion
+            # Increment progress tracker after successful completion
             if _progress_tracker:
                 await _progress_tracker.increment(step_name)
                 _progress_tracker.print_progress()
-                await _progress_tracker.increment(step_name)
-                _progress_tracker.print_progress()
             
-            # Calculate scores for both orders
+            # Calculate score
             expected_grid = held_out_example.output
-            asc_similarity = get_grid_similarity(expected_grid, asc_grid)
-            desc_similarity = get_grid_similarity(expected_grid, desc_grid)
+            similarity = get_grid_similarity(expected_grid, grid) if not dry_run else 0.0
             
-            # Use best score (since ARC allows two trials)
-            best_similarity = max(asc_similarity, desc_similarity)
-            
+            # Store result (maintain structure for backward compatibility)
             result = {
                 "held_out_idx": held_out_idx,
                 "ascending": {
-                    "similarity": asc_similarity,
-                    "uncertainty": asc_uncertainty,
-                    "reasoning_content": asc_reasoning
+                    "similarity": similarity if example_order is None else 0.0,
+                    "uncertainty": uncertainty if example_order is None else "",
+                    "reasoning_content": reasoning if example_order is None else None
                 },
                 "descending": {
-                    "similarity": desc_similarity,
-                    "uncertainty": desc_uncertainty,
-                    "reasoning_content": desc_reasoning
+                    "similarity": similarity if example_order == -1 else 0.0,
+                    "uncertainty": uncertainty if example_order == -1 else "",
+                    "reasoning_content": reasoning if example_order == -1 else None
                 },
-                "best_similarity": best_similarity
+                "best_similarity": similarity
             }
             
             held_out_results.append(result)
             
-            # Store grids
-            grids_dict[grid_key] = {
+            # Store grids (maintain structure for backward compatibility)
+            grid_data = {
                 "input": held_out_example.input,
-                "expected": expected_grid,
-                "ascending": asc_grid,
-                "descending": desc_grid
+                "expected": expected_grid
             }
+            if example_order is None:
+                grid_data["ascending"] = grid
+            else:
+                grid_data["descending"] = grid
+            grids_dict[grid_key] = grid_data
             
         except Exception as e:
             logger.error(f"    Error in held-out validation (reduced) for example {held_out_idx}: {e}")
@@ -451,7 +513,8 @@ async def run_held_out_validation(
     modality_type: str,
     example_order: int | None,
     output_dir: Path,
-    session_id: Optional[str] = None
+    session_id: Optional[str] = None,
+    dry_run: bool = False
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     """
     Run held-out validation (leave-one-out) for a modality + order combination.
@@ -533,57 +596,62 @@ async def run_held_out_validation(
         try:
             step_name = f"Hold-out E{held_out_idx}: {modality_type} ({order_name[:3]})"
             
-            # Apply transform_instructions twice: ascending and descending order
-            asc_grid, asc_uncertainty, asc_reasoning, desc_grid, desc_uncertainty, desc_reasoning = await follow_instructions_twice(
-                instructions=held_out_instructions,
-                training_examples=context_examples,
-                test_input_grid=held_out_example.input,
-                challenge_data=challenge_data,
-                is_held_out=True,
-                working_hypothesis=working_hypothesis,
-                modality_type=modality_type,
-                session_id=session_id
-            )
+            if dry_run:
+                logger.info(f"      [DRY-RUN] Would generate grid for held-out example {held_out_idx}")
+                grid = [[0]]  # Placeholder grid
+                uncertainty = "[DRY-RUN] Placeholder uncertainty"
+                reasoning = "[DRY-RUN] Placeholder reasoning"
+            else:
+                # Apply transform_instructions with specified order
+                grid, uncertainty, reasoning = await follow_instructions_to_generate_grid(
+                    instructions=held_out_instructions,
+                    training_examples=context_examples,
+                    test_input_grid=held_out_example.input,
+                    challenge_data=challenge_data,
+                    is_held_out=True,
+                    example_order=example_order,
+                    working_hypothesis=working_hypothesis,
+                    modality_type=modality_type,
+                    session_id=session_id
+                )
             
-            # Increment for both API calls (ascending + descending order) after successful completion
+            # Increment progress tracker after successful completion
             if _progress_tracker:
                 await _progress_tracker.increment(step_name)
                 _progress_tracker.print_progress()
-                await _progress_tracker.increment(step_name)
-                _progress_tracker.print_progress()
             
-            # Calculate scores for both orders
+            # Calculate score
             expected_grid = held_out_example.output
-            asc_similarity = get_grid_similarity(expected_grid, asc_grid)
-            desc_similarity = get_grid_similarity(expected_grid, desc_grid)
+            similarity = get_grid_similarity(expected_grid, grid) if not dry_run else 0.0
             
-            # Use best score (since ARC allows two trials)
-            best_similarity = max(asc_similarity, desc_similarity)
-            
+            # Store result (maintain structure for backward compatibility)
             result = {
                 "held_out_idx": held_out_idx,
                 "ascending": {
-                    "similarity": asc_similarity,
-                    "uncertainty": asc_uncertainty,
-                    "reasoning_content": asc_reasoning
+                    "similarity": similarity if example_order is None else 0.0,
+                    "uncertainty": uncertainty if example_order is None else "",
+                    "reasoning_content": reasoning if example_order is None else None
                 },
                 "descending": {
-                    "similarity": desc_similarity,
-                    "uncertainty": desc_uncertainty,
-                    "reasoning_content": desc_reasoning
+                    "similarity": similarity if example_order == -1 else 0.0,
+                    "uncertainty": uncertainty if example_order == -1 else "",
+                    "reasoning_content": reasoning if example_order == -1 else None
                 },
-                "best_similarity": best_similarity
+                "best_similarity": similarity
             }
             
             held_out_results.append(result)
             
-            # Store grids
-            grids_dict[grid_key] = {
+            # Store grids (maintain structure for backward compatibility)
+            grid_data = {
                 "input": held_out_example.input,
-                "expected": expected_grid,
-                "ascending": asc_grid,
-                "descending": desc_grid
+                "expected": expected_grid
             }
+            if example_order is None:
+                grid_data["ascending"] = grid
+            else:
+                grid_data["descending"] = grid
+            grids_dict[grid_key] = grid_data
             
         except Exception as e:
             logger.error(f"    Error in held-out validation for example {held_out_idx}: {e}")
@@ -609,7 +677,8 @@ async def run_test_cases_reduced(
     modality_type: str,
     example_order: int | None,
     output_dir: Path,
-    session_id: Optional[str] = None
+    session_id: Optional[str] = None,
+    dry_run: bool = False
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     """
     Run test cases for a modality + order combination with reduced context (no training examples).
@@ -647,64 +716,68 @@ async def run_test_cases_reduced(
         try:
             step_name = f"Test T{test_idx} reduced: {modality_type} ({order_name[:3]})"
             
-            # Apply transform_instructions twice with reduced context (no training examples)
-            asc_grid, asc_uncertainty, asc_reasoning, desc_grid, desc_uncertainty, desc_reasoning = await follow_instructions_twice(
-                instructions=test_instructions,
-                training_examples=challenge_data.train,  # Passed but not used in modality
-                test_input_grid=test_case.input,
-                challenge_data=challenge_data,
-                is_held_out=False,
-                test_idx=test_idx,
-                working_hypothesis=belief.working_hypothesis,
-                modality_type=modality_type,
-                include_training_examples=False,  # Reduced mode: no training examples
-                session_id=session_id
-            )
+            if dry_run:
+                logger.info(f"      [DRY-RUN] Would generate grid for test {test_idx} (reduced)")
+                grid = [[0]]  # Placeholder grid
+                uncertainty = "[DRY-RUN] Placeholder uncertainty"
+                reasoning = "[DRY-RUN] Placeholder reasoning"
+            else:
+                # Apply transform_instructions with specified order and reduced context (no training examples)
+                grid, uncertainty, reasoning = await follow_instructions_to_generate_grid(
+                    instructions=test_instructions,
+                    training_examples=challenge_data.train,  # Passed but not used in modality
+                    test_input_grid=test_case.input,
+                    challenge_data=challenge_data,
+                    is_held_out=False,
+                    test_idx=test_idx,
+                    example_order=example_order,
+                    working_hypothesis=belief.working_hypothesis,
+                    modality_type=modality_type,
+                    include_training_examples=False,  # Reduced mode: no training examples
+                    session_id=session_id
+                )
             
-            # Increment for both API calls (ascending + descending order) after successful completion
+            # Increment progress tracker after successful completion
             if _progress_tracker:
                 await _progress_tracker.increment(step_name)
                 _progress_tracker.print_progress()
-                await _progress_tracker.increment(step_name)
-                _progress_tracker.print_progress()
             
-            # Calculate scores (if we have ground truth)
-            asc_similarity = 0.0
-            desc_similarity = 0.0
+            # Calculate score (if we have ground truth)
+            similarity = 0.0
             expected_grid = None
             
             if hasattr(test_case, 'output') and test_case.output is not None:
                 expected_grid = test_case.output
-                asc_similarity = get_grid_similarity(expected_grid, asc_grid)
-                desc_similarity = get_grid_similarity(expected_grid, desc_grid)
+                if not dry_run:
+                    similarity = get_grid_similarity(expected_grid, grid)
             
-            # Use best score
-            best_similarity = max(asc_similarity, desc_similarity)
-            
+            # Store result (maintain structure for backward compatibility)
             result = {
                 "test_idx": test_idx,
                 "ascending": {
-                    "similarity": asc_similarity,
-                    "uncertainty": asc_uncertainty,
-                    "reasoning_content": asc_reasoning
+                    "similarity": similarity if example_order is None else 0.0,
+                    "uncertainty": uncertainty if example_order is None else "",
+                    "reasoning_content": reasoning if example_order is None else None
                 },
                 "descending": {
-                    "similarity": desc_similarity,
-                    "uncertainty": desc_uncertainty,
-                    "reasoning_content": desc_reasoning
+                    "similarity": similarity if example_order == -1 else 0.0,
+                    "uncertainty": uncertainty if example_order == -1 else "",
+                    "reasoning_content": reasoning if example_order == -1 else None
                 },
-                "best_similarity": best_similarity,
+                "best_similarity": similarity,
                 "has_ground_truth": hasattr(test_case, 'output') and test_case.output is not None
             }
             
             test_results.append(result)
             
-            # Store grids
+            # Store grids (maintain structure for backward compatibility)
             grid_data = {
-                "input": test_case.input,
-                "ascending": asc_grid,
-                "descending": desc_grid
+                "input": test_case.input
             }
+            if example_order is None:
+                grid_data["ascending"] = grid
+            else:
+                grid_data["descending"] = grid
             if expected_grid is not None:
                 grid_data["expected"] = expected_grid
             grids_dict[grid_key] = grid_data
@@ -732,7 +805,8 @@ async def run_test_cases(
     modality_type: str,
     example_order: int | None,
     output_dir: Path,
-    session_id: Optional[str] = None
+    session_id: Optional[str] = None,
+    dry_run: bool = False
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     """
     Run test cases for a modality + order combination.
@@ -775,63 +849,67 @@ async def run_test_cases(
         try:
             step_name = f"Test T{test_idx}: {modality_type} ({order_name[:3]})"
             
-            # Apply transform_instructions twice: ascending and descending order
-            asc_grid, asc_uncertainty, asc_reasoning, desc_grid, desc_uncertainty, desc_reasoning = await follow_instructions_twice(
-                instructions=test_instructions,
-                training_examples=challenge_data.train,
-                test_input_grid=test_case.input,
-                challenge_data=challenge_data,
-                is_held_out=False,
-                test_idx=test_idx,
-                working_hypothesis=belief.working_hypothesis,
-                modality_type=modality_type,
-                session_id=session_id
-            )
+            if dry_run:
+                logger.info(f"      [DRY-RUN] Would generate grid for test {test_idx}")
+                grid = [[0]]  # Placeholder grid
+                uncertainty = "[DRY-RUN] Placeholder uncertainty"
+                reasoning = "[DRY-RUN] Placeholder reasoning"
+            else:
+                # Apply transform_instructions with specified order
+                grid, uncertainty, reasoning = await follow_instructions_to_generate_grid(
+                    instructions=test_instructions,
+                    training_examples=challenge_data.train,
+                    test_input_grid=test_case.input,
+                    challenge_data=challenge_data,
+                    is_held_out=False,
+                    test_idx=test_idx,
+                    example_order=example_order,
+                    working_hypothesis=belief.working_hypothesis,
+                    modality_type=modality_type,
+                    session_id=session_id
+                )
             
-            # Increment for both API calls (ascending + descending order) after successful completion
+            # Increment progress tracker after successful completion
             if _progress_tracker:
                 await _progress_tracker.increment(step_name)
                 _progress_tracker.print_progress()
-                await _progress_tracker.increment(step_name)
-                _progress_tracker.print_progress()
             
-            # Calculate scores (if we have ground truth)
-            asc_similarity = 0.0
-            desc_similarity = 0.0
+            # Calculate score (if we have ground truth)
+            similarity = 0.0
             expected_grid = None
             
             if hasattr(test_case, 'output') and test_case.output is not None:
                 expected_grid = test_case.output
-                asc_similarity = get_grid_similarity(expected_grid, asc_grid)
-                desc_similarity = get_grid_similarity(expected_grid, desc_grid)
+                if not dry_run:
+                    similarity = get_grid_similarity(expected_grid, grid)
             
-            # Use best score
-            best_similarity = max(asc_similarity, desc_similarity)
-            
+            # Store result (maintain structure for backward compatibility)
             result = {
                 "test_idx": test_idx,
                 "ascending": {
-                    "similarity": asc_similarity,
-                    "uncertainty": asc_uncertainty,
-                    "reasoning_content": asc_reasoning
+                    "similarity": similarity if example_order is None else 0.0,
+                    "uncertainty": uncertainty if example_order is None else "",
+                    "reasoning_content": reasoning if example_order is None else None
                 },
                 "descending": {
-                    "similarity": desc_similarity,
-                    "uncertainty": desc_uncertainty,
-                    "reasoning_content": desc_reasoning
+                    "similarity": similarity if example_order == -1 else 0.0,
+                    "uncertainty": uncertainty if example_order == -1 else "",
+                    "reasoning_content": reasoning if example_order == -1 else None
                 },
-                "best_similarity": best_similarity,
+                "best_similarity": similarity,
                 "has_ground_truth": hasattr(test_case, 'output') and test_case.output is not None
             }
             
             test_results.append(result)
             
-            # Store grids
+            # Store grids (maintain structure for backward compatibility)
             grid_data = {
-                "input": test_case.input,
-                "ascending": asc_grid,
-                "descending": desc_grid
+                "input": test_case.input
             }
+            if example_order is None:
+                grid_data["ascending"] = grid
+            else:
+                grid_data["descending"] = grid
             if expected_grid is not None:
                 grid_data["expected"] = expected_grid
             grids_dict[grid_key] = grid_data
@@ -947,7 +1025,9 @@ async def run_experiment_for_modality_order(
     output_dir: Path,
     model: str = GEMINI_MODEL,
     temperature: float = TEMPERATURE,
-    session_id: Optional[str] = None
+    session_id: Optional[str] = None,
+    include_reduced: bool = False,
+    dry_run: bool = False
 ) -> Dict[str, Any]:
     """
     Run experiment for a single modality + order combination.
@@ -955,8 +1035,8 @@ async def run_experiment_for_modality_order(
     After hypothesis generation, runs all independent tasks in parallel:
     - Held-out validation (normal)
     - Test cases (normal)
-    - Held-out validation (reduced)
-    - Test cases (reduced)
+    - Held-out validation (reduced) - if include_reduced is True
+    - Test cases (reduced) - if include_reduced is True
     
     Args:
         challenge_data: Challenge data
@@ -965,6 +1045,7 @@ async def run_experiment_for_modality_order(
         output_dir: Output directory
         model: Model to use (defaults to GEMINI_MODEL)
         temperature: Temperature setting (defaults to TEMPERATURE)
+        include_reduced: If True, also run reduced context versions
     
     Returns:
         Dict with results including individual scores for plotting.
@@ -975,50 +1056,67 @@ async def run_experiment_for_modality_order(
     # Generate hypothesis
     belief, reasoning_content = await generate_hypothesis(
         challenge_data, modality_type, example_order, model=model, temperature=temperature,
-        session_id=session_id
+        session_id=session_id, dry_run=dry_run
     )
     
-    # Save hypothesis response immediately
-    hypothesis_dir = output_dir / f"{modality_type}_{order_name}"
-    hypothesis_dir.mkdir(parents=True, exist_ok=True)
-    
-    hypothesis_data = {
-        "working_hypothesis": belief.working_hypothesis,
-        "transform_instructions": belief.transform_instructions,
-        "uncertainty": belief.uncertainty,
-        "notebook": belief.notebook,
-        "reasoning_content": reasoning_content,
-        "modality_type": modality_type,
-        "example_order": order_name
-    }
-    
-    with open(hypothesis_dir / "hypothesis.json", "w") as f:
-        json.dump(hypothesis_data, f, indent=2)
-    logger.debug(f"Saved hypothesis: {hypothesis_dir / 'hypothesis.json'}")
+    # Save hypothesis response immediately (skip in dry-run mode)
+    if not dry_run:
+        hypothesis_dir = output_dir / f"{modality_type}_{order_name}"
+        hypothesis_dir.mkdir(parents=True, exist_ok=True)
+        
+        hypothesis_data = {
+            "working_hypothesis": belief.working_hypothesis,
+            "transform_instructions": belief.transform_instructions,
+            "uncertainty": belief.uncertainty,
+            "notebook": belief.notebook,
+            "reasoning_content": reasoning_content,
+            "modality_type": modality_type,
+            "example_order": order_name
+        }
+        
+        with open(hypothesis_dir / "hypothesis.json", "w") as f:
+            json.dump(hypothesis_data, f, indent=2)
+        logger.debug(f"Saved hypothesis: {hypothesis_dir / 'hypothesis.json'}")
     
     # Run all independent tasks in parallel
     logger.info(f"Running parallel tasks for {modality_type} ({order_name})")
     
-    # Create tasks for all independent operations
-    (
-        (held_out_results, held_out_grids),
-        (test_results, test_grids),
-        (held_out_results_reduced, held_out_grids_reduced),
-        (test_results_reduced, test_grids_reduced)
-    ) = await asyncio.gather(
+    # Create tasks for normal operations
+    tasks = [
         run_held_out_validation(
-            challenge_data, belief, modality_type, example_order, output_dir, session_id=session_id
+            challenge_data, belief, modality_type, example_order, output_dir, session_id=session_id, dry_run=dry_run
         ),
         run_test_cases(
-            challenge_data, belief, modality_type, example_order, output_dir, session_id=session_id
-        ),
-        run_held_out_validation_reduced(
-            challenge_data, belief, modality_type, example_order, output_dir, session_id=session_id
-        ),
-        run_test_cases_reduced(
-            challenge_data, belief, modality_type, example_order, output_dir, session_id=session_id
+            challenge_data, belief, modality_type, example_order, output_dir, session_id=session_id, dry_run=dry_run
         )
-    )
+    ]
+    
+    # Add reduced tasks if requested
+    if include_reduced:
+        tasks.extend([
+            run_held_out_validation_reduced(
+                challenge_data, belief, modality_type, example_order, output_dir, session_id=session_id, dry_run=dry_run
+            ),
+            run_test_cases_reduced(
+                challenge_data, belief, modality_type, example_order, output_dir, session_id=session_id, dry_run=dry_run
+            )
+        ])
+    
+    # Execute all tasks
+    results = await asyncio.gather(*tasks)
+    
+    (held_out_results, held_out_grids) = results[0]
+    (test_results, test_grids) = results[1]
+    
+    # Handle reduced results
+    if include_reduced:
+        (held_out_results_reduced, held_out_grids_reduced) = results[2]
+        (test_results_reduced, test_grids_reduced) = results[3]
+    else:
+        held_out_results_reduced = []
+        held_out_grids_reduced = {}
+        test_results_reduced = []
+        test_grids_reduced = {}
     
     logger.info(f"All parallel tasks completed for {modality_type} ({order_name})")
     
@@ -1052,71 +1150,99 @@ async def run_experiment_for_modality_order(
     
     all_grids_reduced = {**held_out_grids_reduced, **test_grids_reduced}
     
-    # Save all results (atomic operation with lock)
-    await save_incremental_results(
-        output_dir, modality_type, order_name,
-        all_results, all_grids,
-        all_results_reduced, all_grids_reduced
-    )
-    logger.debug(f"Saved final results (normal + reduced)")
+    # Save all results (atomic operation with lock, skip in dry-run mode)
+    if not dry_run:
+        await save_incremental_results(
+            output_dir, modality_type, order_name,
+            all_results, all_grids,
+            all_results_reduced if include_reduced else None,
+            all_grids_reduced if include_reduced else None
+        )
+        logger.debug(f"Saved final results (normal" + (" + reduced" if include_reduced else "") + ")")
     
-    return {
+    result = {
         "modality_type": modality_type,
         "example_order": order_name,
         "held_out_results": held_out_results,
         "test_results": test_results,
-        "held_out_results_reduced": held_out_results_reduced,
-        "test_results_reduced": test_results_reduced,
         "has_reasoning_content": reasoning_content is not None
     }
+    
+    if include_reduced:
+        result["held_out_results_reduced"] = held_out_results_reduced
+        result["test_results_reduced"] = test_results_reduced
+    
+    return result
 
 
-def detect_completed_experiments(output_dir: Path) -> set:
+def detect_completed_experiments(output_dir: Path, include_reduced: bool = False, modality_types: Optional[List[str]] = None) -> set:
     """
     Detect which modality+order combinations have been completed.
     
     Checks for existence of results.json files in each modality_order subdirectory.
     
+    Args:
+        output_dir: Output directory to check
+        include_reduced: If True, also require reduced results to exist
+        modality_types: List of modality types to check. If None, uses MODALITY_TYPES.
+    
     Returns:
         Set of (modality_type, order_name) tuples that are completed.
     """
     completed = set()
+    modalities_to_check = modality_types if modality_types else MODALITY_TYPES
     
-    for modality_type in MODALITY_TYPES:
+    for modality_type in modalities_to_check:
         for example_order in [None, -1]:
             order_name = "descending" if example_order == -1 else "ascending"
             hypothesis_dir = output_dir / f"{modality_type}_{order_name}"
             results_file = hypothesis_dir / "results.json"
             
-            # Check if both normal and reduced results exist
-            results_reduced_file = hypothesis_dir / "results_reduced.json"
-            if results_file.exists() and results_reduced_file.exists():
-                completed.add((modality_type, order_name))
+            if results_file.exists():
+                if include_reduced:
+                    # Check if both normal and reduced results exist
+                    results_reduced_file = hypothesis_dir / "results_reduced.json"
+                    if results_reduced_file.exists():
+                        completed.add((modality_type, order_name))
+                else:
+                    # Only normal results required
+                    completed.add((modality_type, order_name))
     
     return completed
 
 
-def calculate_total_api_calls(num_train: int, num_test: int) -> int:
+def calculate_total_api_calls(num_train: int, num_test: int, num_orders: int = 1, include_reduced: bool = False, modality_types: Optional[List[str]] = None) -> int:
     """
     Calculate total number of API calls needed for the experiment.
     
     Per modality+order combination:
     - 1 call for hypothesis generation
-    - num_train * 2 calls for held-out validation (asc + desc)
-    - num_test * 2 calls for test cases (asc + desc)
-    - Same for reduced version
+    - num_train calls for held-out validation
+    - num_test calls for test cases
+    - Same for reduced version (if include_reduced is True)
     
-    Total: 14 combinations * (1 + 2*num_train + 2*num_test + 2*num_train + 2*num_test)
-         = 14 * (1 + 4*num_train + 4*num_test)
+    Args:
+        num_train: Number of training examples
+        num_test: Number of test cases
+        num_orders: Number of orders to test (1 for asc/desc only, 2 for both)
+        include_reduced: If True, include reduced context versions
+        modality_types: List of modality types to test. If None, uses MODALITY_TYPES.
+    
+    Returns:
+        Total number of API calls needed
     """
-    num_combinations = len(MODALITY_TYPES) * 2  # 7 modalities * 2 orders
+    modalities_to_test = modality_types if modality_types else MODALITY_TYPES
+    num_combinations = len(modalities_to_test) * num_orders
     calls_per_combination = (
         1 +  # hypothesis
-        2 * num_train +  # held-out validation (asc + desc)
-        2 * num_test +  # test cases (asc + desc)
-        2 * num_train +  # held-out validation reduced (asc + desc)
-        2 * num_test  # test cases reduced (asc + desc)
+        num_train +  # held-out validation
+        num_test  # test cases
     )
+    if include_reduced:
+        calls_per_combination += (
+            num_train +  # held-out validation reduced
+            num_test  # test cases reduced
+        )
     return num_combinations * calls_per_combination
 
 
@@ -1127,7 +1253,11 @@ async def run_full_experiment(
     model: str = GEMINI_MODEL,
     temperature: float = TEMPERATURE,
     rpm: Optional[int] = None,
-    resume_from_dir: Optional[Path] = None
+    resume_from_dir: Optional[Path] = None,
+    order: str = "ascending",
+    include_reduced: bool = False,
+    modality_types: Optional[List[str]] = None,
+    dry_run: bool = False
 ):
     """Run full experiment for a challenge.
     
@@ -1139,11 +1269,20 @@ async def run_full_experiment(
         temperature: Temperature setting (defaults to TEMPERATURE)
         rpm: Maximum requests per minute (None = no rate limiting)
         resume_from_dir: Optional path to previous output directory to resume from
+        order: Order to test - "ascending", "descending", or "both" (default: "ascending")
+        include_reduced: If True, also run reduced context versions (default: False)
+        modality_types: List of modality types to test. If None, uses all MODALITY_TYPES.
+        dry_run: If True, skip LLM calls and return placeholder results
     """
     global _rate_limiter, _progress_tracker, _original_acompletion
     
-    # Set up rate limiter
-    if rpm is not None:
+    if dry_run:
+        logger.info("=" * 80)
+        logger.info("DRY-RUN MODE: No LLM calls will be made")
+        logger.info("=" * 80)
+    
+    # Set up rate limiter (skip in dry-run mode)
+    if not dry_run and rpm is not None:
         _rate_limiter = RateLimiter(rpm)
         logger.info(f"Rate limiting enabled: {rpm} RPM")
         
@@ -1169,6 +1308,13 @@ async def run_full_experiment(
     logger.info(f"Loading challenge: {challenge_id}")
     logger.info(f"Using model: {model}, temperature: {temperature}")
     
+    # Determine modalities to process
+    modalities_to_process = modality_types if modality_types else MODALITY_TYPES
+    if modality_types:
+        logger.info(f"Using custom modality types: {modalities_to_process}")
+    else:
+        logger.info(f"Using all modality types: {modalities_to_process}")
+    
     # Load challenge
     if challenges_path:
         from src.utils.data_loader import load_challenges_from_arc_prize_json
@@ -1189,15 +1335,65 @@ async def run_full_experiment(
     
     logger.info(f"Challenge loaded: {len(challenge_data.train)} train, {len(challenge_data.test)} test")
     
-    # Determine output directory (resume or new)
+    # Determine orders to test
+    if order == "both":
+        orders_to_test = [None, -1]  # ascending, descending
+        num_orders = 2
+    elif order == "descending":
+        orders_to_test = [-1]
+        num_orders = 1
+    else:  # ascending (default)
+        orders_to_test = [None]
+        num_orders = 1
+    
+    # Calculate total API calls needed
+    num_train = len(challenge_data.train)
+    num_test = len(challenge_data.test)
+    total_api_calls = calculate_total_api_calls(num_train, num_test, num_orders, include_reduced, modalities_to_process)
+    
+    if dry_run:
+        # Print detailed dry-run report
+        print("\n" + "=" * 80)
+        print("DRY-RUN REPORT: Experiment Configuration")
+        print("=" * 80)
+        print(f"Challenge ID: {challenge_id}")
+        print(f"  Training examples: {num_train}")
+        print(f"  Test cases: {num_test}")
+        print(f"\nModalities to test: {len(modalities_to_process)}")
+        for i, mod in enumerate(modalities_to_process, 1):
+            print(f"  {i}. {mod}")
+        print(f"\nOrders to test: {order}")
+        print(f"Include reduced: {include_reduced}")
+        print(f"\nModel: {model}")
+        print(f"Temperature: {temperature}")
+        print(f"Rate limit: {rpm} RPM" if rpm else "Rate limit: None")
+        print(f"\nTotal API calls: {total_api_calls}")
+        print(f"  Per modality+order combination:")
+        calls_per_combination = 1 + num_train + num_test
+        if include_reduced:
+            calls_per_combination += num_train + num_test
+        print(f"    - Hypothesis generation: 1")
+        print(f"    - Held-out validation: {num_train}")
+        print(f"    - Test cases: {num_test}")
+        if include_reduced:
+            print(f"    - Held-out validation (reduced): {num_train}")
+            print(f"    - Test cases (reduced): {num_test}")
+        print(f"    Total per combination: {calls_per_combination}")
+        print(f"  Combinations: {len(modalities_to_process)} modalities × {num_orders} order(s) = {len(modalities_to_process) * num_orders}")
+        print("=" * 80 + "\n")
+    
+    # Determine output directory (resume or new, skip in dry-run mode)
     completed_experiments = set()
-    if resume_from_dir and resume_from_dir.exists():
+    if dry_run:
+        output_dir = output_base_dir / challenge_id / "dry_run"  # Placeholder path
+        session_id = f"{challenge_id}-modality_experiment-dry-run"
+    elif resume_from_dir and resume_from_dir.exists():
         # Resume from existing directory
         output_dir = resume_from_dir
         logger.info(f"Resuming from: {output_dir}")
         
         # Detect completed experiments
-        completed_experiments = detect_completed_experiments(output_dir)
+        completed_experiments = detect_completed_experiments(output_dir, include_reduced=include_reduced, modality_types=modalities_to_process)
         logger.info(f"Found {len(completed_experiments)} completed experiments")
         
         # Load existing results.json if it exists
@@ -1219,27 +1415,29 @@ async def run_full_experiment(
         output_dir.mkdir(parents=True, exist_ok=True)
         session_id = f"{challenge_id}-modality_experiment-{session_timestamp}"
     
-    logger.info(f"Output directory: {output_dir}")
-    logger.info(f"Langfuse session_id: {session_id}")
-    
-    # Calculate total API calls needed
-    num_train = len(challenge_data.train)
-    num_test = len(challenge_data.test)
-    total_api_calls = calculate_total_api_calls(num_train, num_test)
+    if not dry_run:
+        logger.info(f"Output directory: {output_dir}")
+        logger.info(f"Langfuse session_id: {session_id}")
     
     # Subtract completed experiments
-    completed_api_calls = len(completed_experiments) * (
-        1 + 2 * num_train + 2 * num_test + 2 * num_train + 2 * num_test
-    )
+    calls_per_combination = 1 + num_train + num_test
+    if include_reduced:
+        calls_per_combination += num_train + num_test
+    completed_api_calls = len(completed_experiments) * calls_per_combination
     remaining_api_calls = total_api_calls - completed_api_calls
     
     logger.info(f"Total API calls needed: {total_api_calls}")
-    logger.info(f"Completed API calls: {completed_api_calls}")
-    logger.info(f"Remaining API calls: {remaining_api_calls}")
+    if not dry_run:
+        logger.info(f"Completed API calls: {completed_api_calls}")
+        logger.info(f"Remaining API calls: {remaining_api_calls}")
     
-    # Initialize progress tracker
-    _progress_tracker = ProgressTracker(remaining_api_calls)
-    print(f"\n[Progress] 0/{remaining_api_calls} API calls (0.0%) | Remaining: {remaining_api_calls} | Initializing")
+    # Initialize progress tracker (use total_api_calls in dry-run mode since no experiments are completed)
+    progress_total = total_api_calls if dry_run else remaining_api_calls
+    _progress_tracker = ProgressTracker(progress_total)
+    if not dry_run:
+        print(f"\n[Progress] 0/{remaining_api_calls} API calls (0.0%) | Remaining: {remaining_api_calls} | Initializing")
+    else:
+        print(f"\n[Progress] 0/{total_api_calls} API calls (0.0%) | Remaining: {total_api_calls} | Initializing")
     
     # Run experiments for all modality + order combinations with Langfuse session tracking
     # All nested observations will automatically inherit session_id
@@ -1256,8 +1454,8 @@ async def run_full_experiment(
             logger.warning(f"Failed to load existing results: {e}")
     
     with propagate_attributes(session_id=session_id):
-        for modality_type in MODALITY_TYPES:
-            for example_order in [None, -1]:  # ascending, descending
+        for modality_type in modalities_to_process:
+            for example_order in orders_to_test:
                 order_name = "descending" if example_order == -1 else "ascending"
                 
                 # Skip if already completed
@@ -1273,13 +1471,12 @@ async def run_full_experiment(
                         # Load from individual results.json file
                         hypothesis_dir = output_dir / f"{modality_type}_{order_name}"
                         results_file = hypothesis_dir / "results.json"
+                        # Check for reduced file only if include_reduced is True
                         results_reduced_file = hypothesis_dir / "results_reduced.json"
-                        if results_file.exists() and results_reduced_file.exists():
+                        if results_file.exists() and (not include_reduced or results_reduced_file.exists()):
                             try:
                                 with open(results_file, "r") as f:
                                     individual_results = json.load(f)
-                                with open(results_reduced_file, "r") as f:
-                                    individual_results_reduced = json.load(f)
                                 
                                 # Reconstruct result dict
                                 held_out_results = []
@@ -1293,21 +1490,25 @@ async def run_full_experiment(
                                     elif key.startswith("T"):
                                         test_results.append(value)
                                 
-                                for key, value in individual_results_reduced.items():
-                                    if key.startswith("E"):
-                                        held_out_results_reduced.append(value)
-                                    elif key.startswith("T"):
-                                        test_results_reduced.append(value)
+                                if include_reduced and results_reduced_file.exists():
+                                    with open(results_reduced_file, "r") as f:
+                                        individual_results_reduced = json.load(f)
+                                    for key, value in individual_results_reduced.items():
+                                        if key.startswith("E"):
+                                            held_out_results_reduced.append(value)
+                                        elif key.startswith("T"):
+                                            test_results_reduced.append(value)
                                 
                                 existing_result = {
                                     "modality_type": modality_type,
                                     "example_order": order_name,
                                     "held_out_results": held_out_results,
                                     "test_results": test_results,
-                                    "held_out_results_reduced": held_out_results_reduced,
-                                    "test_results_reduced": test_results_reduced,
                                     "has_reasoning_content": True  # Assume yes if file exists
                                 }
+                                if include_reduced:
+                                    existing_result["held_out_results_reduced"] = held_out_results_reduced
+                                    existing_result["test_results_reduced"] = test_results_reduced
                                 all_results.append(existing_result)
                             except Exception as e:
                                 logger.warning(f"Failed to load existing result for {modality_type} ({order_name}): {e}")
@@ -1316,23 +1517,25 @@ async def run_full_experiment(
                 try:
                     result = await run_experiment_for_modality_order(
                         challenge_data, modality_type, example_order, output_dir,
-                        model=model, temperature=temperature, session_id=session_id
+                        model=model, temperature=temperature, session_id=session_id,
+                        include_reduced=include_reduced, dry_run=dry_run
                     )
                     all_results.append(result)
                     
-                    # Save summary incrementally after each experiment
-                    summary = {
-                        "session_id": session_id,
-                        "model": model,
-                        "temperature": temperature,
-                        "rpm": rpm,
-                        "num_train": num_train,
-                        "num_test": num_test,
-                        "results": all_results
-                    }
-                    with open(output_dir / "results.json", "w") as f:
-                        json.dump(summary, f, indent=2)
-                    logger.debug(f"Saved incremental summary after {modality_type} ({order_name})")
+                    # Save summary incrementally after each experiment (skip in dry-run mode)
+                    if not dry_run:
+                        summary = {
+                            "session_id": session_id,
+                            "model": model,
+                            "temperature": temperature,
+                            "rpm": rpm,
+                            "num_train": num_train,
+                            "num_test": num_test,
+                            "results": all_results
+                        }
+                        with open(output_dir / "results.json", "w") as f:
+                            json.dump(summary, f, indent=2)
+                        logger.debug(f"Saved incremental summary after {modality_type} ({order_name})")
                     
                 except Exception as e:
                     logger.error(f"Error in {modality_type} ({order_name}): {e}")
@@ -1342,20 +1545,21 @@ async def run_full_experiment(
                         "error": str(e)
                     })
                     
-                    # Save summary even on error
-                    summary = {
-                        "session_id": session_id,
-                        "model": model,
-                        "temperature": temperature,
-                        "rpm": rpm,
-                        "num_train": num_train,
-                        "num_test": num_test,
-                        "results": all_results
-                    }
-                    with open(output_dir / "results.json", "w") as f:
-                        json.dump(summary, f, indent=2)
+                    # Save summary even on error (skip in dry-run mode)
+                    if not dry_run:
+                        summary = {
+                            "session_id": session_id,
+                            "model": model,
+                            "temperature": temperature,
+                            "rpm": rpm,
+                            "num_train": num_train,
+                            "num_test": num_test,
+                            "results": all_results
+                        }
+                        with open(output_dir / "results.json", "w") as f:
+                            json.dump(summary, f, indent=2)
     
-    # Final save (redundant but ensures completeness)
+    # Final save (redundant but ensures completeness, skip in dry-run mode)
     summary = {
         "session_id": session_id,
         "model": model,
@@ -1366,16 +1570,22 @@ async def run_full_experiment(
         "results": all_results
     }
     
-    with open(output_dir / "results.json", "w") as f:
-        json.dump(summary, f, indent=2)
-    
-    # Create plots
-    plots_dir = output_dir / "plots"
-    plots_dir.mkdir(exist_ok=True)
-    create_plots(all_results, plots_dir, num_train, num_test)
-    
-    print()  # New line after progress
-    logger.info(f"Experiment complete. Results saved to: {output_dir}")
+    if not dry_run:
+        with open(output_dir / "results.json", "w") as f:
+            json.dump(summary, f, indent=2)
+        
+        # Create plots
+        plots_dir = output_dir / "plots"
+        plots_dir.mkdir(exist_ok=True)
+        create_plots(all_results, plots_dir, num_train, num_test)
+        
+        print()  # New line after progress
+        logger.info(f"Experiment complete. Results saved to: {output_dir}")
+    else:
+        print("\n" + "=" * 80)
+        print("DRY-RUN COMPLETE: No files were written, no LLM calls were made")
+        print("=" * 80)
+        logger.info("Dry-run complete. No LLM calls were made.")
     
     return summary
 
@@ -2038,6 +2248,30 @@ def main():
         default=None,
         help="Path to previous output directory to resume from (e.g., modality_experiment_results/challenge_id/20241101_1200). Checks for completed experiments and skips them."
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Dry-run mode: Inspect and report what will be run without making LLM calls"
+    )
+    parser.add_argument(
+        "--order",
+        type=str,
+        choices=["ascending", "descending", "both"],
+        default="ascending",
+        help="Order of training examples to test: 'ascending' (default), 'descending', or 'both'"
+    )
+    parser.add_argument(
+        "--include-reduced",
+        action="store_true",
+        help="Include reduced context versions (no training examples in context). Default: False"
+    )
+    parser.add_argument(
+        "--modality-types",
+        type=str,
+        nargs="+",
+        default=None,
+        help="Specific modality types to test (default: all). Example: --modality-types row_only col_only image_only"
+    )
     
     args = parser.parse_args()
     
@@ -2055,11 +2289,8 @@ def main():
         if isinstance(handler, logging.StreamHandler) and handler.stream == sys.stdout:
             root_logger.removeHandler(handler)
     
-    # Determine challenges file
-    if args.challenges_file is None:
-        challenges_file = DEFAULT_CHALLENGES_FILE
-    else:
-        challenges_file = args.challenges_file
+    # Determine challenges file - resolve relative paths relative to repo root
+    challenges_file = resolve_challenges_path(args.challenges_file, repo_root=repo_root)
     
     output_base_dir = Path(args.output_dir)
     
@@ -2071,7 +2302,11 @@ def main():
         model=args.model,
         temperature=args.temperature,
         rpm=args.rpm,
-        resume_from_dir=args.resume_from_dir
+        resume_from_dir=args.resume_from_dir,
+        order=args.order,
+        include_reduced=args.include_reduced,
+        modality_types=args.modality_types,
+        dry_run=args.dry_run
     ))
 
 

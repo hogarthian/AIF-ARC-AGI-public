@@ -83,7 +83,7 @@ except ImportError:
         yield
 
 from src import logger, get_run_log_file
-from src.utils.data_loader import load_challenge, DEFAULT_CHALLENGES_FILE
+from src.utils.data_loader import load_challenge, DEFAULT_CHALLENGES_FILE, resolve_challenges_path
 from src.utils.modality_encoder import create_prompt_messages
 from src.utils.follow_instructions import follow_instructions_to_generate_grid
 from src.utils.scoring_engine import get_grid_similarity
@@ -167,15 +167,48 @@ async def generate_hypothesis(
     model: str = GEMINI_MODEL,
     temperature: float = TEMPERATURE,
     session_id: Optional[str] = None,
-    example_order: Optional[int] = DEFAULT_EXAMPLE_ORDER
+    example_order: Optional[int] = DEFAULT_EXAMPLE_ORDER,
+    dry_run: bool = False
 ) -> Tuple[TransformationWithUncertainty, str | None]:
-    """Generate hypothesis using Gemini with specified modality and order."""
+    """Generate hypothesis using Gemini with specified modality and order.
+    
+    Args:
+        dry_run: If True, skip LLM call and return placeholder belief
+    """
     
     order_name = "descending" if example_order == -1 else "ascending"
     logger.info(f"Generating hypothesis: modality={modality_type}, order={order_name}, model={model}, temperature={temperature}")
     
     num_train = len(challenge_data.train)
     num_test = len(challenge_data.test)
+    
+    if dry_run:
+        # Return placeholder belief in dry-run mode
+        logger.info(f"  [DRY-RUN] Would generate hypothesis for {modality_type} ({order_name})")
+        # Create a minimal placeholder belief
+        DynamicModel = TransformationWithUncertainty.create_dynamic_model(num_train, num_test)
+        # Create placeholder transform_instructions
+        placeholder_instructions = {"general": "[DRY-RUN] Placeholder general instruction"}
+        for i in range(num_train):
+            placeholder_instructions[f"E{i}"] = f"[DRY-RUN] Placeholder instruction for E{i}"
+        for i in range(num_test):
+            placeholder_instructions[f"T{i}"] = f"[DRY-RUN] Placeholder instruction for T{i}"
+        
+        # Create a minimal belief object
+        from src.nodes.models import TransformationWithUncertainty
+        belief = TransformationWithUncertainty(
+            working_hypothesis="[DRY-RUN] Placeholder working hypothesis",
+            transform_instructions=placeholder_instructions,
+            uncertainty="[DRY-RUN] Placeholder uncertainty",
+            notebook="[DRY-RUN] Placeholder notebook"
+        )
+        reasoning_content = "[DRY-RUN] Placeholder reasoning content"
+        
+        if _progress_tracker:
+            await _progress_tracker.increment("Hypothesis generation (dry-run)")
+            _progress_tracker.print_progress()
+        
+        return belief, reasoning_content
     
     DynamicModel = TransformationWithUncertainty.create_dynamic_model(num_train, num_test)
     
@@ -258,9 +291,14 @@ async def run_held_out_validation_reduced(
     output_dir: Path,
     modality_type: str = DEFAULT_MODALITY_TYPE,
     session_id: Optional[str] = None,
-    example_order: Optional[int] = DEFAULT_EXAMPLE_ORDER
+    example_order: Optional[int] = DEFAULT_EXAMPLE_ORDER,
+    dry_run: bool = False
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    """Run held-out validation (reduced context) for specified modality and order."""
+    """Run held-out validation (reduced context) for specified modality and order.
+    
+    Args:
+        dry_run: If True, skip LLM calls and return placeholder results
+    """
     
     order_name = "descending" if example_order == -1 else "ascending"
     logger.info(f"  Running held-out validation (reduced): {modality_type} ({order_name})")
@@ -319,25 +357,31 @@ async def run_held_out_validation_reduced(
         try:
             step_name = f"Hold-out E{held_out_idx} reduced"
             
-            grid, uncertainty, reasoning = await follow_instructions_to_generate_grid(
-                instructions=held_out_instructions,
-                training_examples=context_examples,
-                test_input_grid=held_out_example.input,
-                challenge_data=challenge_data,
-                is_held_out=True,
-                example_order=example_order,
-                working_hypothesis=working_hypothesis,
-                modality_type=modality_type,
-                include_training_examples=False,
-                session_id=session_id
-            )
+            if dry_run:
+                logger.info(f"      [DRY-RUN] Would generate grid for held-out example {held_out_idx} (reduced)")
+                grid = [[0]]  # Placeholder grid
+                uncertainty = "[DRY-RUN] Placeholder uncertainty"
+                reasoning = "[DRY-RUN] Placeholder reasoning"
+            else:
+                grid, uncertainty, reasoning = await follow_instructions_to_generate_grid(
+                    instructions=held_out_instructions,
+                    training_examples=context_examples,
+                    test_input_grid=held_out_example.input,
+                    challenge_data=challenge_data,
+                    is_held_out=True,
+                    example_order=example_order,
+                    working_hypothesis=working_hypothesis,
+                    modality_type=modality_type,
+                    include_training_examples=False,
+                    session_id=session_id
+                )
             
             if _progress_tracker:
                 await _progress_tracker.increment(step_name)
                 _progress_tracker.print_progress()
             
             expected_grid = held_out_example.output
-            similarity = get_grid_similarity(expected_grid, grid)
+            similarity = get_grid_similarity(expected_grid, grid) if not dry_run else 0.0
             
             result = {
                 "held_out_idx": held_out_idx,
@@ -376,9 +420,14 @@ async def run_held_out_validation(
     output_dir: Path,
     modality_type: str = DEFAULT_MODALITY_TYPE,
     session_id: Optional[str] = None,
-    example_order: Optional[int] = DEFAULT_EXAMPLE_ORDER
+    example_order: Optional[int] = DEFAULT_EXAMPLE_ORDER,
+    dry_run: bool = False
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    """Run held-out validation for specified modality and order."""
+    """Run held-out validation for specified modality and order.
+    
+    Args:
+        dry_run: If True, skip LLM calls and return placeholder results
+    """
     
     order_name = "descending" if example_order == -1 else "ascending"
     logger.info(f"  Running held-out validation: {modality_type} ({order_name})")
@@ -441,24 +490,30 @@ async def run_held_out_validation(
         try:
             step_name = f"Hold-out E{held_out_idx}"
             
-            grid, uncertainty, reasoning = await follow_instructions_to_generate_grid(
-                instructions=held_out_instructions,
-                training_examples=context_examples,
-                test_input_grid=held_out_example.input,
-                challenge_data=challenge_data,
-                is_held_out=True,
-                example_order=example_order,
-                working_hypothesis=working_hypothesis,
-                modality_type=modality_type,
-                session_id=session_id
-            )
+            if dry_run:
+                logger.info(f"      [DRY-RUN] Would generate grid for held-out example {held_out_idx}")
+                grid = [[0]]  # Placeholder grid
+                uncertainty = "[DRY-RUN] Placeholder uncertainty"
+                reasoning = "[DRY-RUN] Placeholder reasoning"
+            else:
+                grid, uncertainty, reasoning = await follow_instructions_to_generate_grid(
+                    instructions=held_out_instructions,
+                    training_examples=context_examples,
+                    test_input_grid=held_out_example.input,
+                    challenge_data=challenge_data,
+                    is_held_out=True,
+                    example_order=example_order,
+                    working_hypothesis=working_hypothesis,
+                    modality_type=modality_type,
+                    session_id=session_id
+                )
             
             if _progress_tracker:
                 await _progress_tracker.increment(step_name)
                 _progress_tracker.print_progress()
             
             expected_grid = held_out_example.output
-            similarity = get_grid_similarity(expected_grid, grid)
+            similarity = get_grid_similarity(expected_grid, grid) if not dry_run else 0.0
             
             result = {
                 "held_out_idx": held_out_idx,
@@ -497,9 +552,14 @@ async def run_test_cases_reduced(
     output_dir: Path,
     modality_type: str = DEFAULT_MODALITY_TYPE,
     session_id: Optional[str] = None,
-    example_order: Optional[int] = DEFAULT_EXAMPLE_ORDER
+    example_order: Optional[int] = DEFAULT_EXAMPLE_ORDER,
+    dry_run: bool = False
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    """Run test cases (reduced context) for specified modality and order."""
+    """Run test cases (reduced context) for specified modality and order.
+    
+    Args:
+        dry_run: If True, skip LLM calls and return placeholder results
+    """
     
     order_name = "descending" if example_order == -1 else "ascending"
     logger.info(f"  Running test cases (reduced): {modality_type} ({order_name})")
@@ -526,19 +586,25 @@ async def run_test_cases_reduced(
         try:
             step_name = f"Test T{test_idx} reduced"
             
-            grid, uncertainty, reasoning = await follow_instructions_to_generate_grid(
-                instructions=test_instructions,
-                training_examples=challenge_data.train,
-                test_input_grid=test_case.input,
-                challenge_data=challenge_data,
-                is_held_out=False,
-                test_idx=test_idx,
-                example_order=example_order,
-                working_hypothesis=belief.working_hypothesis,
-                modality_type=modality_type,
-                include_training_examples=False,
-                session_id=session_id
-            )
+            if dry_run:
+                logger.info(f"      [DRY-RUN] Would generate grid for test {test_idx} (reduced)")
+                grid = [[0]]  # Placeholder grid
+                uncertainty = "[DRY-RUN] Placeholder uncertainty"
+                reasoning = "[DRY-RUN] Placeholder reasoning"
+            else:
+                grid, uncertainty, reasoning = await follow_instructions_to_generate_grid(
+                    instructions=test_instructions,
+                    training_examples=challenge_data.train,
+                    test_input_grid=test_case.input,
+                    challenge_data=challenge_data,
+                    is_held_out=False,
+                    test_idx=test_idx,
+                    example_order=example_order,
+                    working_hypothesis=belief.working_hypothesis,
+                    modality_type=modality_type,
+                    include_training_examples=False,
+                    session_id=session_id
+                )
             
             if _progress_tracker:
                 await _progress_tracker.increment(step_name)
@@ -549,7 +615,8 @@ async def run_test_cases_reduced(
             
             if hasattr(test_case, 'output') and test_case.output is not None:
                 expected_grid = test_case.output
-                similarity = get_grid_similarity(expected_grid, grid)
+                if not dry_run:
+                    similarity = get_grid_similarity(expected_grid, grid)
             
             result = {
                 "test_idx": test_idx,
@@ -590,9 +657,14 @@ async def run_test_cases(
     output_dir: Path,
     modality_type: str = DEFAULT_MODALITY_TYPE,
     session_id: Optional[str] = None,
-    example_order: Optional[int] = DEFAULT_EXAMPLE_ORDER
+    example_order: Optional[int] = DEFAULT_EXAMPLE_ORDER,
+    dry_run: bool = False
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    """Run test cases for specified modality and order."""
+    """Run test cases for specified modality and order.
+    
+    Args:
+        dry_run: If True, skip LLM calls and return placeholder results
+    """
     
     order_name = "descending" if example_order == -1 else "ascending"
     logger.info(f"  Running test cases: {modality_type} ({order_name})")
@@ -623,18 +695,24 @@ async def run_test_cases(
         try:
             step_name = f"Test T{test_idx}"
             
-            grid, uncertainty, reasoning = await follow_instructions_to_generate_grid(
-                instructions=test_instructions,
-                training_examples=challenge_data.train,
-                test_input_grid=test_case.input,
-                challenge_data=challenge_data,
-                is_held_out=False,
-                test_idx=test_idx,
-                example_order=example_order,
-                working_hypothesis=belief.working_hypothesis,
-                modality_type=modality_type,
-                session_id=session_id
-            )
+            if dry_run:
+                logger.info(f"      [DRY-RUN] Would generate grid for test {test_idx}")
+                grid = [[0]]  # Placeholder grid
+                uncertainty = "[DRY-RUN] Placeholder uncertainty"
+                reasoning = "[DRY-RUN] Placeholder reasoning"
+            else:
+                grid, uncertainty, reasoning = await follow_instructions_to_generate_grid(
+                    instructions=test_instructions,
+                    training_examples=challenge_data.train,
+                    test_input_grid=test_case.input,
+                    challenge_data=challenge_data,
+                    is_held_out=False,
+                    test_idx=test_idx,
+                    example_order=example_order,
+                    working_hypothesis=belief.working_hypothesis,
+                    modality_type=modality_type,
+                    session_id=session_id
+                )
             
             if _progress_tracker:
                 await _progress_tracker.increment(step_name)
@@ -645,7 +723,8 @@ async def run_test_cases(
             
             if hasattr(test_case, 'output') and test_case.output is not None:
                 expected_grid = test_case.output
-                similarity = get_grid_similarity(expected_grid, grid)
+                if not dry_run:
+                    similarity = get_grid_similarity(expected_grid, grid)
             
             result = {
                 "test_idx": test_idx,
@@ -731,9 +810,14 @@ async def run_experiment(
     temperature: float = TEMPERATURE,
     session_id: Optional[str] = None,
     trial_num: Optional[int] = None,
-    example_order: Optional[int] = DEFAULT_EXAMPLE_ORDER
+    example_order: Optional[int] = DEFAULT_EXAMPLE_ORDER,
+    dry_run: bool = False
 ) -> Dict[str, Any]:
-    """Run simplified experiment for specified modality and order."""
+    """Run simplified experiment for specified modality and order.
+    
+    Args:
+        dry_run: If True, skip LLM calls and return placeholder results
+    """
     
     order_name = "descending" if example_order == -1 else "ascending"
     trial_str = f" (trial {trial_num})" if trial_num is not None else ""
@@ -742,7 +826,7 @@ async def run_experiment(
     # Generate hypothesis
     belief, reasoning_content = await generate_hypothesis(
         challenge_data, modality_type=modality_type, model=model, temperature=temperature, 
-        session_id=session_id, example_order=example_order
+        session_id=session_id, example_order=example_order, dry_run=dry_run
     )
     
     # Save hypothesis
@@ -766,13 +850,13 @@ async def run_experiment(
         (test_results_reduced, test_grids_reduced)
     ) = await asyncio.gather(
         run_held_out_validation(challenge_data, belief, output_dir, modality_type=modality_type, 
-                                session_id=session_id, example_order=example_order),
+                                session_id=session_id, example_order=example_order, dry_run=dry_run),
         run_test_cases(challenge_data, belief, output_dir, modality_type=modality_type, 
-                       session_id=session_id, example_order=example_order),
+                       session_id=session_id, example_order=example_order, dry_run=dry_run),
         run_held_out_validation_reduced(challenge_data, belief, output_dir, modality_type=modality_type, 
-                                        session_id=session_id, example_order=example_order),
+                                        session_id=session_id, example_order=example_order, dry_run=dry_run),
         run_test_cases_reduced(challenge_data, belief, output_dir, modality_type=modality_type, 
-                              session_id=session_id, example_order=example_order)
+                              session_id=session_id, example_order=example_order, dry_run=dry_run)
     )
     
     logger.info(f"All parallel tasks completed for {modality_type} ({order_name})")
@@ -807,12 +891,13 @@ async def run_experiment(
     
     all_grids_reduced = {**held_out_grids_reduced, **test_grids_reduced}
     
-    # Save all results
-    await save_results(
-        output_dir, all_results, all_grids,
-        all_results_reduced, all_grids_reduced, hypothesis_data, 
-        modality_type=modality_type, trial_num=trial_num, example_order=example_order
-    )
+    # Save all results (skip in dry-run mode)
+    if not dry_run:
+        await save_results(
+            output_dir, all_results, all_grids,
+            all_results_reduced, all_grids_reduced, hypothesis_data, 
+            modality_type=modality_type, trial_num=trial_num, example_order=example_order
+        )
     
     return {
         "modality_type": modality_type,
@@ -840,14 +925,24 @@ async def run_full_experiment(
     rpm: Optional[int] = None,
     num_trials: int = 1,
     experiment_note: Optional[str] = None,
-    example_order: Optional[int] = DEFAULT_EXAMPLE_ORDER
+    example_order: Optional[int] = DEFAULT_EXAMPLE_ORDER,
+    dry_run: bool = False
 ):
-    """Run simplified experiment for a challenge, optionally multiple times."""
+    """Run simplified experiment for a challenge, optionally multiple times.
+    
+    Args:
+        dry_run: If True, skip LLM calls and return placeholder results
+    """
     
     global _rate_limiter, _progress_tracker, _original_acompletion
     
-    # Set up rate limiter
-    if rpm is not None:
+    if dry_run:
+        logger.info("=" * 80)
+        logger.info("DRY-RUN MODE: No LLM calls will be made")
+        logger.info("=" * 80)
+    
+    # Set up rate limiter (skip in dry-run mode)
+    if not dry_run and rpm is not None:
         _rate_limiter = RateLimiter(rpm)
         logger.info(f"Rate limiting enabled: {rpm} RPM")
         
@@ -889,16 +984,19 @@ async def run_full_experiment(
     
     logger.info(f"Challenge loaded: {len(challenge_data.train)} train, {len(challenge_data.test)} test")
     
-    # Create output directory with timestamp
+    # Create output directory with timestamp (skip in dry-run mode)
     session_timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-    output_dir = output_base_dir / challenge_id / session_timestamp
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Save experiment note if provided
-    if experiment_note:
-        with open(output_dir / "EXPERIMENT_NOTE.txt", "w") as f:
-            f.write(experiment_note)
-        logger.info(f"Experiment note saved: {experiment_note[:100]}...")
+    if not dry_run:
+        output_dir = output_base_dir / challenge_id / session_timestamp
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Save experiment note if provided
+        if experiment_note:
+            with open(output_dir / "EXPERIMENT_NOTE.txt", "w") as f:
+                f.write(experiment_note)
+            logger.info(f"Experiment note saved: {experiment_note[:100]}...")
+    else:
+        output_dir = output_base_dir / challenge_id / "dry_run"  # Placeholder path
     
     num_train = len(challenge_data.train)
     num_test = len(challenge_data.test)
@@ -907,6 +1005,28 @@ async def run_full_experiment(
     
     logger.info(f"Running {num_trials} trial(s)")
     logger.info(f"Total API calls needed: {total_api_calls} ({total_api_calls_per_trial} per trial)")
+    
+    if dry_run:
+        # Print detailed dry-run report
+        print("\n" + "=" * 80)
+        print("DRY-RUN REPORT: Experiment Configuration")
+        print("=" * 80)
+        print(f"Challenge ID: {challenge_id}")
+        print(f"  Training examples: {num_train}")
+        print(f"  Test cases: {num_test}")
+        print(f"\nModality type: {modality_type}")
+        print(f"Example order: {'descending' if example_order == -1 else 'ascending'}")
+        print(f"Number of trials: {num_trials}")
+        print(f"\nModel: {model}")
+        print(f"Temperature: {temperature}")
+        print(f"Rate limit: {rpm} RPM" if rpm else "Rate limit: None")
+        print(f"\nTotal API calls: {total_api_calls} ({total_api_calls_per_trial} per trial)")
+        print(f"  - Hypothesis generation: 1 per trial")
+        print(f"  - Held-out validation: {num_train} per trial")
+        print(f"  - Test cases: {num_test} per trial")
+        print(f"  - Held-out validation (reduced): {num_train} per trial")
+        print(f"  - Test cases (reduced): {num_test} per trial")
+        print("=" * 80 + "\n")
     
     all_summaries = []
     
@@ -920,7 +1040,8 @@ async def run_full_experiment(
         
         # Initialize progress tracker for this trial
         _progress_tracker = ProgressTracker(total_api_calls_per_trial)
-        print(f"\n[Trial {trial}/{num_trials}] [Progress] 0/{total_api_calls_per_trial} API calls (0.0%) | Remaining: {total_api_calls_per_trial} | Initializing")
+        if not dry_run:
+            print(f"\n[Trial {trial}/{num_trials}] [Progress] 0/{total_api_calls_per_trial} API calls (0.0%) | Remaining: {total_api_calls_per_trial} | Initializing")
         
         # Run experiment with Langfuse session tracking
         with propagate_attributes(session_id=trial_session_id):
@@ -931,7 +1052,8 @@ async def run_full_experiment(
                     model=model, temperature=temperature, 
                     session_id=trial_session_id,
                     trial_num=trial,
-                    example_order=example_order
+                    example_order=example_order,
+                    dry_run=dry_run
                 )
             except Exception as e:
                 logger.error(f"Error in trial {trial}: {e}")
@@ -945,7 +1067,7 @@ async def run_full_experiment(
                     "traceback": traceback.format_exc()
                 }
         
-        # Save summary for this trial
+        # Save summary for this trial (skip in dry-run mode)
         order_name = "descending" if example_order == -1 else "ascending"
         summary = {
             "session_id": trial_session_id,
@@ -960,16 +1082,20 @@ async def run_full_experiment(
             "result": result
         }
         
-        trial_results_file = output_dir / f"results_trial{trial:02d}.json"
-        with open(trial_results_file, "w") as f:
-            json.dump(summary, f, indent=2)
+        if not dry_run:
+            trial_results_file = output_dir / f"results_trial{trial:02d}.json"
+            with open(trial_results_file, "w") as f:
+                json.dump(summary, f, indent=2)
+            logger.info(f"Trial {trial} complete. Results saved to: {trial_results_file}")
+        else:
+            logger.info(f"[DRY-RUN] Trial {trial} simulated (no files written)")
         
         all_summaries.append(summary)
         
-        print()  # New line after progress
-        logger.info(f"Trial {trial} complete. Results saved to: {trial_results_file}")
+        if not dry_run:
+            print()  # New line after progress
     
-    # Save combined summary
+    # Save combined summary (skip in dry-run mode)
     order_name = "descending" if example_order == -1 else "ascending"
     combined_summary = {
         "experiment_note": experiment_note,
@@ -984,10 +1110,15 @@ async def run_full_experiment(
         "trials": all_summaries
     }
     
-    with open(output_dir / "results_combined.json", "w") as f:
-        json.dump(combined_summary, f, indent=2)
-    
-    logger.info(f"\nAll {num_trials} trial(s) complete. Combined results saved to: {output_dir}")
+    if not dry_run:
+        with open(output_dir / "results_combined.json", "w") as f:
+            json.dump(combined_summary, f, indent=2)
+        logger.info(f"\nAll {num_trials} trial(s) complete. Combined results saved to: {output_dir}")
+    else:
+        print("\n" + "=" * 80)
+        print("DRY-RUN COMPLETE: No files were written, no LLM calls were made")
+        print("=" * 80)
+        logger.info("Dry-run complete. No LLM calls were made.")
     
     return combined_summary
 
@@ -1051,6 +1182,11 @@ def main():
         default="ascending",
         help="Order of training examples: 'ascending' (default) or 'descending'"
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Dry-run mode: Inspect and report what will be run without making LLM calls"
+    )
     
     args = parser.parse_args()
     
@@ -1067,11 +1203,8 @@ def main():
         if isinstance(handler, logging.StreamHandler) and handler.stream == sys.stdout:
             root_logger.removeHandler(handler)
     
-    # Determine challenges file
-    if args.challenges_file is None:
-        challenges_file = DEFAULT_CHALLENGES_FILE
-    else:
-        challenges_file = args.challenges_file
+    # Determine challenges file - resolve relative paths relative to repo root
+    challenges_file = resolve_challenges_path(args.challenges_file, repo_root=repo_root)
     
     output_base_dir = Path(args.output_dir)
     
@@ -1116,7 +1249,8 @@ cross-order experiment.
         rpm=args.rpm,
         num_trials=args.num_trials,
         experiment_note=experiment_note,
-        example_order=example_order
+        example_order=example_order,
+        dry_run=args.dry_run
     ))
 
 

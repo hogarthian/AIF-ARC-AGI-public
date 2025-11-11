@@ -27,9 +27,15 @@ Results are organized by timestamp directories:
 
 ## Running the Experiment
 
+**⚠️ Important**: Before running any experiment, use the `--dry-run` flag to preview the number of API calls and understand the experiment configuration. This helps you plan your experiments carefully and avoid unexpected costs.
+
 ### Basic Usage
 
 ```bash
+# First, preview the experiment with --dry-run
+uv run python run_modality_vision_experiment.py --challenge-ids 13e47133 0934a4d8 135a2760 136b0064 142ca369 --dry-run
+
+# Then run the actual experiment
 uv run python run_modality_vision_experiment.py --challenge-ids 13e47133 0934a4d8 135a2760 136b0064 142ca369 --rpm 60
 ```
 
@@ -37,6 +43,17 @@ uv run python run_modality_vision_experiment.py --challenge-ids 13e47133 0934a4d
 If you want to try with different challenges:
 
 ```bash
+# First, preview the experiment with --dry-run
+uv run python run_modality_vision_experiment.py \
+  --challenge-ids <id1> <id2> ... \
+  --output-dir data \
+  --challenges-file <path_to_challenges.json> \
+  --model <model_name> \
+  --temperature <temperature> \
+  --modality-types <modality1> <modality2> ... \
+  --dry-run
+
+# Then run the actual experiment
 uv run python run_modality_vision_experiment.py \
   --challenge-ids <id1> <id2> ... \
   --output-dir data \
@@ -100,8 +117,17 @@ Legacy format `input`/`output` is still supported and defaults to `E0`.
 
 ### Examples
 
+**Note**: All examples below show the actual run commands. Remember to first run with `--dry-run` to preview API calls before executing.
+
 **Test all modalities for 5 challenges (input only, default):**
 ```bash
+# Preview first
+uv run python run_modality_vision_experiment.py \
+  --challenge-ids 13e47133 0934a4d8 135a2760 136b0064 142ca369 \
+  --output-dir data \
+  --dry-run
+
+# Then run
 uv run python run_modality_vision_experiment.py \
   --challenge-ids 13e47133 0934a4d8 135a2760 136b0064 142ca369 \
   --output-dir data \
