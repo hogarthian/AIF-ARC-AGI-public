@@ -31,6 +31,49 @@ DEFAULT_CHALLENGES_FILE = ARC_PRIZE_2025_DIR / "arc-agi_evaluation_challenges.js
 DEFAULT_SOLUTIONS_FILE = ARC_PRIZE_2025_DIR / "arc-agi_evaluation_solutions.json"
 
 
+def resolve_challenges_path(path: Optional[Path | str], repo_root: Optional[Path] = None) -> Path:
+    """
+    Resolve a challenges file path relative to repository root.
+    
+    This function ensures that relative paths (like 'data/arc-prize-2024/arc-agi_evaluation_challenges.json')
+    are resolved relative to the repository root, regardless of the current working directory.
+    
+    Args:
+        path: Path to challenges file. Can be:
+            - None: Returns default challenges file
+            - Absolute path: Returns as-is
+            - Relative path: Resolved relative to repo_root
+        repo_root: Repository root directory. If None, uses REPO_ROOT from this module.
+        
+    Returns:
+        Resolved absolute Path object
+        
+    Examples:
+        >>> resolve_challenges_path('data/arc-prize-2024/arc-agi_evaluation_challenges.json')
+        Path('/repo/root/data/arc-prize-2024/arc-agi_evaluation_challenges.json')
+        
+        >>> resolve_challenges_path('/absolute/path/to/file.json')
+        Path('/absolute/path/to/file.json')
+        
+        >>> resolve_challenges_path(None)
+        Path('/repo/root/data/arc-prize-2025/arc-agi_evaluation_challenges.json')
+    """
+    if repo_root is None:
+        repo_root = REPO_ROOT
+    
+    if path is None:
+        return DEFAULT_CHALLENGES_FILE
+    
+    path = Path(path)
+    
+    # If absolute path, use as-is
+    if path.is_absolute():
+        return path
+    
+    # Resolve relative to repo root
+    return repo_root / path
+
+
 class Example(BaseModel):
     """Single training/test example"""
     input: list[list[int]]

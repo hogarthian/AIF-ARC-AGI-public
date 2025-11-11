@@ -2,8 +2,8 @@
 Modality Vision Experiment: Test model's ability to "see" things under different modalities.
 
 This experiment:
-1. Takes training example 1 (index 0) input and output from 5 challenges
-2. Presents each puzzle in different single modalities:
+1. Takes training example 1 (index 0) from challenges
+2. Presents each puzzle grid (input and/or output) in different single modalities:
    - row_only: Row-wise text format
    - col_only: Column-wise text format
    - ascii: ASCII format (space-separated integers per row, like arc-lang-public)
@@ -12,11 +12,28 @@ This experiment:
 3. Asks the LLM to provide a very detailed description of what it sees
 4. Saves descriptions for comparison
 
+By default, only processes the INPUT grid from training example 0 (E0:input), matching what was reported in the paper.
+Use --grid-types to specify which examples and grid types to process.
+
 Usage:
-uv run python test_modality_vision_experiment.py --challenge-ids <id1> <id2> ... --output-dir <output_dir> --model <model> --temperature <temperature> --rpm <rpm>
+uv run python run_modality_vision_experiment.py --challenge-ids <id1> <id2> ... --output-dir <output_dir> --model <model> --temperature <temperature> --rpm <rpm> [--grid-types E0:input|E0:output|E1:input|T0:input|...]
+
+Grid specification format:
+- E0:input - Training example 0, input grid (default)
+- E0:output - Training example 0, output grid
+- E1:input - Training example 1, input grid
+- T0:input - Test example 0, input grid
+- Legacy format: "input"/"output" defaults to E0
 
 Example:
-uv run python test_modality_vision_experiment.py --challenge-ids 13e47133 0934a4d8 135a2760 136b0064 142ca369 --rpm 60
+# Process input only (default, matches paper):
+uv run python run_modality_vision_experiment.py --challenge-ids 13e47133 0934a4d8 135a2760 136b0064 142ca369 --rpm 60
+
+# Process both input and output from training example 0:
+uv run python run_modality_vision_experiment.py --challenge-ids 13e47133 0934a4d8 135a2760 136b0064 142ca369 --grid-types E0:input E0:output --rpm 60
+
+# Process multiple training examples:
+uv run python run_modality_vision_experiment.py --challenge-ids 13e47133 --grid-types E0:input E1:input E2:input --rpm 60
 """
 
 import argparse
@@ -47,7 +64,7 @@ except ImportError:
         yield
 
 from src import logger, get_run_log_file
-from src.utils.data_loader import load_challenge, DEFAULT_CHALLENGES_FILE
+from src.utils.data_loader import load_challenge, DEFAULT_CHALLENGES_FILE, resolve_challenges_path, REPO_ROOT
 from src.utils.modality_encoder import (
     format_grid_row_wise,
     format_grid_column_wise,
@@ -75,13 +92,8 @@ MODALITY_TYPES = [
     "image_17x17",
     "image_768x768",
     "image_24x24",
-    # Images without coordinate annotations (for comparison)
-    "image_14x14_no_coords",
-    "image_15x15_no_coords",
-    "image_16x16_no_coords",
-    "image_17x17_no_coords",
-    "image_768x768_no_coords",
-    "image_24x24_no_coords",
+    # Note: Images without coordinate annotations (e.g., image_14x14_no_coords) are still
+    # supported but not included in default. Use --modality-types to explicitly include them.
 ]
 
 # Description prompt
@@ -294,10 +306,23 @@ async def get_description(
     grid_label: str,
     model: str,
     temperature: float,
-    session_id: Optional[str] = None
+    session_id: Optional[str] = None,
+    dry_run: bool = False
 ) -> str:
-    """Get detailed description from LLM for a grid in a specific modality."""
+    """Get detailed description from LLM for a grid in a specific modality.
+    
+    Args:
+        dry_run: If True, skip LLM call and return placeholder description
+    """
     global _rate_limiter, _progress_tracker
+    
+    if dry_run:
+        # Return placeholder description in dry-run mode
+        description = f"[DRY-RUN] Description for {grid_label} grid in {modality_type} modality would be generated here"
+        if _progress_tracker:
+            await _progress_tracker.increment(f"{grid_label} - {modality_type} (dry-run)")
+            _progress_tracker.print_progress()
+        return description
     
     # Create modality-specific content
     content_parts = []
@@ -349,6 +374,52 @@ async def get_description(
     return description
 
 
+def parse_grid_spec(grid_spec: str) -> Tuple[str, int, str]:
+    """Parse grid specification string.
+    
+    Args:
+        grid_spec: Format "E0:input", "E1:output", "T0:input", or legacy "input"/"output"
+    
+    Returns:
+        Tuple of (example_type, example_idx, grid_type) where:
+        - example_type: "E" for training, "T" for test
+        - example_idx: Index of the example (0-based)
+        - grid_type: "input" or "output"
+    
+    Examples:
+        "E0:input" -> ("E", 0, "input")
+        "T1:output" -> ("T", 1, "output")
+        "input" -> ("E", 0, "input")  # Legacy format defaults to E0
+        "output" -> ("E", 0, "output")  # Legacy format defaults to E0
+    """
+    if ":" in grid_spec:
+        # New format: E0:input, T1:output, etc.
+        parts = grid_spec.split(":")
+        if len(parts) != 2:
+            raise ValueError(f"Invalid grid spec format: {grid_spec}. Expected format: E0:input or T1:output")
+        example_part = parts[0].strip()
+        grid_type = parts[1].strip()
+        
+        if not example_part or example_part[0] not in ["E", "T"]:
+            raise ValueError(f"Invalid example spec: {example_part}. Must start with E (training) or T (test)")
+        
+        example_type = example_part[0]
+        try:
+            example_idx = int(example_part[1:])
+        except ValueError:
+            raise ValueError(f"Invalid example index in: {example_part}. Expected number after E or T")
+        
+        if grid_type not in ["input", "output"]:
+            raise ValueError(f"Invalid grid type: {grid_type}. Must be 'input' or 'output'")
+        
+        return (example_type, example_idx, grid_type)
+    else:
+        # Legacy format: just "input" or "output" (defaults to E0)
+        if grid_spec not in ["input", "output"]:
+            raise ValueError(f"Invalid grid spec: {grid_spec}. Use format E0:input or legacy 'input'/'output'")
+        return ("E", 0, grid_spec)
+
+
 async def process_challenge(
     challenge_id: str,
     challenge_data: Any,
@@ -357,94 +428,152 @@ async def process_challenge(
     temperature: float,
     session_id: Optional[str] = None,
     modality_types: Optional[List[str]] = None,
-    existing_result: Optional[Dict[str, Any]] = None
+    existing_result: Optional[Dict[str, Any]] = None,
+    grid_specs: List[str] = ["E0:input"],
+    dry_run: bool = False
 ) -> Dict[str, Any]:
-    """Process a single challenge: get descriptions for training example 1 in specified modalities."""
+    """Process a single challenge: get descriptions for specified examples and grid types.
+    
+    Args:
+        grid_specs: List of grid specifications. Format: "E0:input", "E1:output", "T0:input", etc.
+                   Legacy format "input"/"output" defaults to E0. Default: ["E0:input"]
+        dry_run: If True, skip LLM calls and return placeholder descriptions
+    """
     logger.info(f"Processing challenge {challenge_id}")
     
     # Use provided modalities or default to all
     modalities_to_process = modality_types if modality_types else MODALITY_TYPES
     
-    # Get training example 1 (index 0)
-    if len(challenge_data.train) == 0:
-        logger.warning(f"Challenge {challenge_id} has no training examples, skipping")
-        return {"error": "No training examples"}
+    # Parse grid specifications
+    parsed_specs = []
+    for spec in grid_specs:
+        try:
+            parsed = parse_grid_spec(spec)
+            parsed_specs.append(parsed)
+        except ValueError as e:
+            logger.error(f"Invalid grid spec '{spec}': {e}")
+            return {"error": f"Invalid grid spec: {spec}"}
     
-    example = challenge_data.train[0]
-    input_grid = example.input
-    output_grid = example.output
+    # Print what will be processed
+    logger.info(f"  Grid specifications to process:")
+    for example_type, example_idx, grid_type in parsed_specs:
+        if example_type == "E":
+            if example_idx >= len(challenge_data.train):
+                logger.warning(f"    {example_type}{example_idx}:{grid_type} - Training example {example_idx} does not exist (only {len(challenge_data.train)} examples)")
+            else:
+                logger.info(f"    {example_type}{example_idx}:{grid_type} - Training example {example_idx}, {grid_type} grid")
+        else:  # T
+            if example_idx >= len(challenge_data.test):
+                logger.warning(f"    {example_type}{example_idx}:{grid_type} - Test example {example_idx} does not exist (only {len(challenge_data.test)} examples)")
+            else:
+                test_case = challenge_data.test[example_idx]
+                has_output = hasattr(test_case, 'output') and test_case.output is not None
+                if grid_type == "output" and not has_output:
+                    logger.warning(f"    {example_type}{example_idx}:{grid_type} - Test example {example_idx} has no output grid")
+                else:
+                    logger.info(f"    {example_type}{example_idx}:{grid_type} - Test example {example_idx}, {grid_type} grid")
     
     # Start with existing result or create new one
     if existing_result:
         results = existing_result.copy()
-        # Ensure descriptions dicts exist
-        if "input_descriptions" not in results:
-            results["input_descriptions"] = {}
-        if "output_descriptions" not in results:
-            results["output_descriptions"] = {}
     else:
         results = {
             "challenge_id": challenge_id,
-            "input_descriptions": {},
-            "output_descriptions": {}
+            "grid_descriptions": {}
         }
     
-    # Get descriptions for input grid in specified modalities
-    logger.info(f"  Getting input descriptions for {challenge_id} (modalities: {modalities_to_process})")
-    input_tasks = []
-    for modality_type in modalities_to_process:
-        task = get_description(
-            input_grid,
-            modality_type,
-            "Input",
-            model,
-            temperature,
-            session_id=session_id
-        )
-        input_tasks.append((modality_type, task))
-    
-    # Run all input descriptions in parallel
-    input_results = await asyncio.gather(*[task for _, task in input_tasks], return_exceptions=True)
-    for (modality_type, _), description in zip(input_tasks, input_results):
-        if isinstance(description, Exception):
-            logger.error(f"    Error getting input description for {modality_type}: {description}")
-            results["input_descriptions"][modality_type] = {"error": str(description)}
+    # Process each grid specification
+    for example_type, example_idx, grid_type in parsed_specs:
+        # Get the appropriate example
+        if example_type == "E":
+            if example_idx >= len(challenge_data.train):
+                logger.warning(f"  Skipping E{example_idx}:{grid_type} - training example {example_idx} does not exist")
+                continue
+            example = challenge_data.train[example_idx]
+            grid = example.input if grid_type == "input" else example.output
+            grid_label = f"E{example_idx}:{grid_type}"
+        else:  # T
+            if example_idx >= len(challenge_data.test):
+                logger.warning(f"  Skipping T{example_idx}:{grid_type} - test example {example_idx} does not exist")
+                continue
+            test_case = challenge_data.test[example_idx]
+            if grid_type == "input":
+                grid = test_case.input
+            else:
+                if not hasattr(test_case, 'output') or test_case.output is None:
+                    logger.warning(f"  Skipping T{example_idx}:output - test example {example_idx} has no output")
+                    continue
+                grid = test_case.output
+            grid_label = f"T{example_idx}:{grid_type}"
+        
+        # Initialize descriptions dict for this grid spec
+        spec_key = f"{example_type}{example_idx}:{grid_type}"
+        if spec_key not in results["grid_descriptions"]:
+            results["grid_descriptions"][spec_key] = {}
+        
+        # Process this grid in all requested modalities
+        if dry_run:
+            logger.info(f"  [DRY-RUN] Would get descriptions for {grid_label} (modalities: {modalities_to_process})")
         else:
-            results["input_descriptions"][modality_type] = {"description": description}
+            logger.info(f"  Getting descriptions for {grid_label} (modalities: {modalities_to_process})")
+        
+        tasks = []
+        for modality_type in modalities_to_process:
+            task = get_description(
+                grid,
+                modality_type,
+                grid_label,
+                model,
+                temperature,
+                session_id=session_id,
+                dry_run=dry_run
+            )
+            tasks.append((modality_type, task))
+        
+        # Run all descriptions in parallel
+        task_results = await asyncio.gather(*[task for _, task in tasks], return_exceptions=True)
+        for (modality_type, _), description in zip(tasks, task_results):
+            if isinstance(description, Exception):
+                logger.error(f"    Error getting description for {grid_label} {modality_type}: {description}")
+                results["grid_descriptions"][spec_key][modality_type] = {"error": str(description)}
+            else:
+                results["grid_descriptions"][spec_key][modality_type] = {"description": description}
+        
+        # Save grid data for reference
+        grid_data_key = f"{spec_key}_grid"
+        if grid_data_key not in results:
+            results[grid_data_key] = grid
+        if f"{spec_key}_dimensions" not in results:
+            results[f"{spec_key}_dimensions"] = {
+                "rows": len(grid),
+                "cols": len(grid[0]) if grid else 0
+            }
     
-    # Get descriptions for output grid in specified modalities
-    logger.info(f"  Getting output descriptions for {challenge_id}")
-    output_tasks = []
-    for modality_type in modalities_to_process:
-        task = get_description(
-            output_grid,
-            modality_type,
-            "Output",
-            model,
-            temperature,
-            session_id=session_id
-        )
-        output_tasks.append((modality_type, task))
-    
-    # Run all output descriptions in parallel
-    output_results = await asyncio.gather(*[task for _, task in output_tasks], return_exceptions=True)
-    for (modality_type, _), description in zip(output_tasks, output_results):
-        if isinstance(description, Exception):
-            logger.error(f"    Error getting output description for {modality_type}: {description}")
-            results["output_descriptions"][modality_type] = {"error": str(description)}
-        else:
-            results["output_descriptions"][modality_type] = {"description": description}
-    
-    # Save grid data for reference (only if not already present)
-    if "input_grid" not in results:
-        results["input_grid"] = input_grid
-    if "output_grid" not in results:
-        results["output_grid"] = output_grid
-    if "grid_dimensions" not in results:
-        results["grid_dimensions"] = {
-            "input": {"rows": len(input_grid), "cols": len(input_grid[0]) if input_grid else 0},
-            "output": {"rows": len(output_grid), "cols": len(output_grid[0]) if output_grid else 0}
-        }
+    # Backward compatibility: also save as input_descriptions/output_descriptions if only E0 is processed
+    if len(parsed_specs) == 1 and parsed_specs[0] == ("E", 0, "input"):
+        if "input_descriptions" not in results:
+            results["input_descriptions"] = results["grid_descriptions"].get("E0:input", {})
+        if "input_grid" not in results:
+            results["input_grid"] = results.get("E0:input_grid")
+    elif len(parsed_specs) == 1 and parsed_specs[0] == ("E", 0, "output"):
+        if "output_descriptions" not in results:
+            results["output_descriptions"] = results["grid_descriptions"].get("E0:output", {})
+        if "output_grid" not in results:
+            results["output_grid"] = results.get("E0:output_grid")
+    elif len(parsed_specs) == 2 and set(parsed_specs) == {("E", 0, "input"), ("E", 0, "output")}:
+        if "input_descriptions" not in results:
+            results["input_descriptions"] = results["grid_descriptions"].get("E0:input", {})
+        if "output_descriptions" not in results:
+            results["output_descriptions"] = results["grid_descriptions"].get("E0:output", {})
+        if "input_grid" not in results:
+            results["input_grid"] = results.get("E0:input_grid")
+        if "output_grid" not in results:
+            results["output_grid"] = results.get("E0:output_grid")
+        if "grid_dimensions" not in results:
+            results["grid_dimensions"] = {
+                "input": results.get("E0:input_dimensions", {}),
+                "output": results.get("E0:output_dimensions", {})
+            }
     
     return results
 
@@ -457,13 +586,26 @@ async def run_experiment(
     temperature: float = TEMPERATURE,
     rpm: Optional[int] = None,
     existing_experiment_dir: Optional[Path] = None,
-    modality_types: Optional[List[str]] = None
+    modality_types: Optional[List[str]] = None,
+    grid_specs: List[str] = ["E0:input"],
+    dry_run: bool = False
 ):
-    """Run the modality vision experiment for multiple challenges."""
+    """Run the modality vision experiment for multiple challenges.
+    
+    Args:
+        grid_specs: List of grid specifications. Format: "E0:input", "E1:output", "T0:input", etc.
+                   Legacy format "input"/"output" defaults to E0. Default: ["E0:input"]
+        dry_run: If True, skip LLM calls and generate a summary report instead
+    """
     global _rate_limiter, _progress_tracker, _original_acompletion
     
-    # Set up rate limiter
-    if rpm is not None:
+    if dry_run:
+        logger.info("=" * 80)
+        logger.info("DRY-RUN MODE: No LLM calls will be made")
+        logger.info("=" * 80)
+    
+    # Set up rate limiter (skip in dry-run mode)
+    if not dry_run and rpm is not None:
         _rate_limiter = RateLimiter(rpm)
         logger.info(f"Rate limiting enabled: {rpm} RPM")
         
@@ -481,25 +623,44 @@ async def run_experiment(
     
     logger.info(f"Loading {len(challenge_ids)} challenges")
     logger.info(f"Using model: {model}, temperature: {temperature}")
+    logger.info(f"Processing grid specifications: {grid_specs}")
+    if dry_run:
+        logger.info("DRY-RUN mode: Will simulate execution without making LLM calls")
     
     # Load challenges
     challenges = {}
     if challenges_path:
         from src.utils.data_loader import load_challenges_from_arc_prize_json
+        if not challenges_path.exists():
+            raise FileNotFoundError(
+                f"Challenges file not found: {challenges_path}\n"
+                f"Repo root: {repo_root}\n"
+                f"Current working directory: {Path.cwd()}\n"
+                f"Please ensure the path is correct relative to the repo root."
+            )
         solutions_path = challenges_path.parent / "arc-agi_evaluation_solutions.json"
         if not solutions_path.exists():
             solutions_path = None
-            logger.warning(f"Solutions file not found")
+            logger.warning(f"Solutions file not found: {solutions_path}")
         
         challenges = load_challenges_from_arc_prize_json(
             challenges_path, challenge_ids=set(challenge_ids), solutions_path=solutions_path
         )
+        
+        # Verify all requested challenges were loaded
+        missing_challenges = set(challenge_ids) - set(challenges.keys())
+        if missing_challenges:
+            raise ValueError(
+                f"Failed to load {len(missing_challenges)} challenge(s): {missing_challenges}\n"
+                f"Loaded {len(challenges)} out of {len(challenge_ids)} requested challenges."
+            )
     else:
         for challenge_id in challenge_ids:
             try:
                 challenges[challenge_id] = load_challenge(challenge_id)
             except Exception as e:
                 logger.error(f"Failed to load challenge {challenge_id}: {e}")
+                raise
     
     logger.info(f"Loaded {len(challenges)} challenges")
     
@@ -530,15 +691,74 @@ async def run_experiment(
     # Use provided modalities or default to all
     modalities_to_process = modality_types if modality_types else MODALITY_TYPES
     
+    # Parse grid specifications to validate them
+    parsed_specs = []
+    for spec in grid_specs:
+        try:
+            parsed = parse_grid_spec(spec)
+            parsed_specs.append(parsed)
+        except ValueError as e:
+            logger.error(f"Invalid grid spec '{spec}': {e}")
+            raise
+    
     # Calculate total API calls needed
-    # For each challenge: 2 grids (input + output) × number of modalities
-    total_api_calls = len(challenges) * 2 * len(modalities_to_process)
+    # For each challenge: number of grid specs × number of modalities
+    num_grid_specs = len(parsed_specs)
+    total_api_calls = len(challenges) * num_grid_specs * len(modalities_to_process)
     
     logger.info(f"Total API calls needed: {total_api_calls}")
     
+    if dry_run:
+        # Print detailed dry-run report
+        print("\n" + "=" * 80)
+        print("DRY-RUN REPORT: Experiment Configuration")
+        print("=" * 80)
+        print(f"Challenges to process: {len(challenges)}")
+        for challenge_id in challenge_ids:
+            if challenge_id in challenges:
+                challenge = challenges[challenge_id]
+                num_train = len(challenge.train)
+                num_test = len(challenge.test)
+                print(f"  - {challenge_id}: {num_train} training examples, {num_test} test cases")
+                
+                # Show which grids will be processed for this challenge
+                print(f"    Grids to process:")
+                for example_type, example_idx, grid_type in parsed_specs:
+                    if example_type == "E":
+                        if example_idx < num_train:
+                            print(f"      {example_type}{example_idx}:{grid_type} - Training example {example_idx}, {grid_type} grid")
+                        else:
+                            print(f"      {example_type}{example_idx}:{grid_type} - SKIP (training example {example_idx} does not exist)")
+                    else:  # T
+                        if example_idx < num_test and num_test > 0:
+                            try:
+                                test_case = challenge.test[example_idx]
+                                has_output = hasattr(test_case, 'output') and test_case.output is not None
+                                if grid_type == "output" and not has_output:
+                                    print(f"      {example_type}{example_idx}:{grid_type} - SKIP (test example {example_idx} has no output)")
+                                else:
+                                    print(f"      {example_type}{example_idx}:{grid_type} - Test example {example_idx}, {grid_type} grid")
+                            except (IndexError, AttributeError, TypeError) as e:
+                                print(f"      {example_type}{example_idx}:{grid_type} - ERROR accessing test example {example_idx}: {e}")
+                        else:
+                            print(f"      {example_type}{example_idx}:{grid_type} - SKIP (test example {example_idx} does not exist)")
+            else:
+                print(f"  - {challenge_id}: NOT FOUND")
+        print(f"\nGrid specifications: {', '.join(grid_specs)}")
+        print(f"Modalities: {len(modalities_to_process)}")
+        for i, mod in enumerate(modalities_to_process, 1):
+            print(f"  {i}. {mod}")
+        print(f"\nModel: {model}")
+        print(f"Temperature: {temperature}")
+        print(f"Rate limit: {rpm} RPM" if rpm else "Rate limit: None")
+        print(f"\nTotal API calls: {total_api_calls}")
+        print(f"Estimated cost: [Would calculate based on model pricing]")
+        print("=" * 80 + "\n")
+    
     # Initialize progress tracker
     _progress_tracker = ProgressTracker(total_api_calls)
-    print(f"\n[Progress] 0/{total_api_calls} API calls (0.0%) | Remaining: {total_api_calls} | Initializing")
+    if not dry_run:
+        print(f"\n[Progress] 0/{total_api_calls} API calls (0.0%) | Remaining: {total_api_calls} | Initializing")
     
     # Process all challenges
     all_results = {}
@@ -574,15 +794,18 @@ async def run_experiment(
                     temperature=temperature,
                     session_id=session_id,
                     modality_types=modalities_to_process,
-                    existing_result=existing_result
+                    existing_result=existing_result,
+                    grid_specs=grid_specs,
+                    dry_run=dry_run
                 )
                 all_results[challenge_id] = result
                 
-                # Save individual challenge result
-                challenge_dir = experiment_dir / challenge_id
-                challenge_dir.mkdir(exist_ok=True)
-                with open(challenge_dir / "result.json", "w") as f:
-                    json.dump(result, f, indent=2)
+                # Save individual challenge result (skip in dry-run mode)
+                if not dry_run:
+                    challenge_dir = experiment_dir / challenge_id
+                    challenge_dir.mkdir(exist_ok=True)
+                    with open(challenge_dir / "result.json", "w") as f:
+                        json.dump(result, f, indent=2)
                 
             except Exception as e:
                 logger.error(f"Error processing challenge {challenge_id}: {e}")
@@ -617,11 +840,16 @@ async def run_experiment(
             "results": all_results
         }
     
-    with open(experiment_dir / "summary.json", "w") as f:
-        json.dump(summary, f, indent=2)
-    
-    print()  # New line after progress
-    logger.info(f"Experiment complete. Results saved to: {experiment_dir}")
+    if not dry_run:
+        with open(experiment_dir / "summary.json", "w") as f:
+            json.dump(summary, f, indent=2)
+        print()  # New line after progress
+        logger.info(f"Experiment complete. Results saved to: {experiment_dir}")
+    else:
+        print("\n" + "=" * 80)
+        print("DRY-RUN COMPLETE: No files were written, no LLM calls were made")
+        print("=" * 80)
+        logger.info("Dry-run complete. No LLM calls were made.")
     
     return summary
 
@@ -680,6 +908,20 @@ def main():
         default=None,
         help="Specific modality types to process (default: all). Example: --modality-types image_768x768"
     )
+    parser.add_argument(
+        "--grid-types",
+        type=str,
+        nargs="+",
+        default=["E0:input"],
+        help="Grid specifications to process. Format: 'E0:input', 'E1:output', 'T0:input', etc. "
+             "E = training example, T = test example. Legacy format 'input'/'output' defaults to E0. "
+             "Default: 'E0:input'. Examples: --grid-types E0:input E0:output or --grid-types E0:input T0:input"
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Dry-run mode: Inspect and report what will be run without making LLM calls"
+    )
     
     args = parser.parse_args()
     
@@ -696,11 +938,8 @@ def main():
         if isinstance(handler, logging.StreamHandler) and handler.stream == sys.stdout:
             root_logger.removeHandler(handler)
     
-    # Determine challenges file
-    if args.challenges_file is None:
-        challenges_file = DEFAULT_CHALLENGES_FILE
-    else:
-        challenges_file = args.challenges_file
+    # Determine challenges file - resolve relative paths relative to repo root
+    challenges_file = resolve_challenges_path(args.challenges_file, repo_root=repo_root)
     
     output_base_dir = Path(args.output_dir)
     
@@ -720,7 +959,9 @@ def main():
         temperature=args.temperature,
         rpm=args.rpm,
         existing_experiment_dir=existing_experiment_dir,
-        modality_types=args.modality_types
+        modality_types=args.modality_types,
+        grid_specs=args.grid_types,
+        dry_run=args.dry_run
     ))
 
 

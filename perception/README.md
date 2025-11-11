@@ -51,12 +51,39 @@ uv run python run_modality_vision_experiment.py \
 
 - `--challenge-ids`: **Required**. One or more challenge IDs to test
 - `--output-dir`: Base output directory (default: `data`). Results saved to `{output_dir}/modality_vision_{timestamp}/`
-- `--challenges-file`: Path to challenges JSON file (default: uses `DEFAULT_CHALLENGES_FILE` from data_loader)
+- `--challenges-file`: Path to challenges JSON file (default: `data/arc-prize-2025/arc-agi_evaluation_challenges.json`)
+  - Use this to load challenges from other datasets (e.g., ARC Prize 2024, ARC-1, etc.)
+  - If solutions file exists in the same directory with name `arc-agi_evaluation_solutions.json`, it will be automatically loaded
+  - Examples:
+    - `--challenges-file data/arc-prize-2024/arc-agi_evaluation_challenges.json` (ARC Prize 2024)
+    - `--challenges-file data/arc-prize-2025/arc-agi_training_challenges.json` (Training set)
 - `--model`: Model to use (default: `gemini/gemini-2.5-pro`)
 - `--temperature`: Temperature setting (default: `0.3`)
 - `--rpm`: Maximum requests per minute for rate limiting (recommended: 60-120 RPM)
 - `--modality-types`: Specific modalities to test (default: all). Example: `--modality-types image_768x768 image_16x16`
+- `--grid-types`: Grid specifications to process. Format: `E0:input`, `E1:output`, `T0:input`, etc.
+  - `E` = training example, `T` = test example
+  - Numbers are 0-based indices
+  - Legacy format `input`/`output` defaults to `E0`
+  - Default: `E0:input` (training example 0, input grid)
+  - Examples:
+    - `--grid-types E0:input` (default, matches paper)
+    - `--grid-types E0:input E0:output` (training example 0, both grids)
+    - `--grid-types E0:input E1:input` (training examples 0 and 1, input grids)
+    - `--grid-types E0:input T0:input` (training example 0 and test example 0, input grids)
+- `--dry-run`: Dry-run mode: Inspect and report what will be run without making LLM calls. Useful for verifying configuration before running expensive experiments.
 - `--existing-experiment-dir`: Path to existing experiment directory to append results to (instead of creating new one)
+
+**Note**: By default, the script processes only the **input** grid from the first training example (`E0:input`), matching what was reported in the paper. 
+
+The `--grid-types` argument allows you to specify which examples and grid types to process:
+- `E0:input` - Training example 0, input grid (default)
+- `E0:output` - Training example 0, output grid
+- `E1:input` - Training example 1, input grid
+- `T0:input` - Test example 0, input grid
+- `T0:output` - Test example 0, output grid (if available)
+
+Legacy format `input`/`output` is still supported and defaults to `E0`.
 
 ### Supported Modality Types
 
@@ -73,11 +100,54 @@ uv run python run_modality_vision_experiment.py \
 
 ### Examples
 
-**Test all modalities for 5 challenges:**
+**Test all modalities for 5 challenges (input only, default):**
 ```bash
 uv run python run_modality_vision_experiment.py \
   --challenge-ids 13e47133 0934a4d8 135a2760 136b0064 142ca369 \
   --output-dir data \
+  --rpm 60
+```
+
+**Test both input and output grids (training example 0):**
+```bash
+uv run python run_modality_vision_experiment.py \
+  --challenge-ids 13e47133 0934a4d8 135a2760 136b0064 142ca369 \
+  --grid-types E0:input E0:output \
+  --output-dir data \
+  --rpm 60
+```
+
+**Test multiple training examples:**
+```bash
+uv run python run_modality_vision_experiment.py \
+  --challenge-ids 13e47133 \
+  --grid-types E0:input E1:input E2:input \
+  --output-dir data \
+  --rpm 60
+```
+
+**Test test case input grids:**
+```bash
+uv run python run_modality_vision_experiment.py \
+  --challenge-ids 13e47133 \
+  --grid-types T0:input \
+  --output-dir data \
+  --rpm 60
+```
+
+**Load challenges from ARC Prize 2024 dataset:**
+```bash
+uv run python run_modality_vision_experiment.py \
+  --challenge-ids <challenge_id_from_2024> \
+  --challenges-file data/arc-prize-2024/arc-agi_evaluation_challenges.json \
+  --rpm 60
+```
+
+**Load challenges from training set:**
+```bash
+uv run python run_modality_vision_experiment.py \
+  --challenge-ids <challenge_id_from_training> \
+  --challenges-file data/arc-prize-2025/arc-agi_training_challenges.json \
   --rpm 60
 ```
 
@@ -89,6 +159,16 @@ uv run python run_modality_vision_experiment.py \
   --output-dir data \
   --rpm 60
 ```
+
+**Dry-run to inspect configuration before running:**
+```bash
+uv run python run_modality_vision_experiment.py \
+  --challenge-ids 13e47133 0934a4d8 135a2760 136b0064 142ca369 \
+  --grid-types E0:input E0:output \
+  --dry-run
+```
+
+This will show a detailed report of what would be executed (challenges, modalities, grid specifications, API calls) without making any LLM calls or writing files. The report includes which specific examples and grid types will be processed for each challenge.
 
 **Append results to existing experiment:**
 ```bash
