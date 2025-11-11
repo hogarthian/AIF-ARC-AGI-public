@@ -57,6 +57,7 @@ we created this simplified script that only tests one order at a time (default: 
 import argparse
 import asyncio
 import json
+import sys
 import time
 import traceback
 from collections import deque
@@ -64,6 +65,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Any, Tuple, Optional
 import litellm
+
+# Add parent directory to path so we can import from src
+script_dir = Path(__file__).resolve().parent
+repo_root = script_dir.parent
+if str(repo_root) not in sys.path:
+    sys.path.insert(0, str(repo_root))
 
 try:
     from langfuse import propagate_attributes
@@ -86,7 +93,6 @@ from src.nodes.hypothesis_fast_nodes import (
     TEMPERATURE,
     HYPOTHESIS_FAST_SYSTEM_PROMPT
 )
-import sys
 
 # Setup litellm
 litellm.drop_params = True

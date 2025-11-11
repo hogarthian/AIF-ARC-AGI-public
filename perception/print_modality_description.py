@@ -17,6 +17,12 @@ import argparse
 from pathlib import Path
 from typing import Optional, List
 
+# Add parent directory to path so we can import from src
+script_dir = Path(__file__).resolve().parent
+repo_root = script_dir.parent
+if str(repo_root) not in sys.path:
+    sys.path.insert(0, str(repo_root))
+
 # Challenge directories
 CHALLENGES = [
     "13e47133",
