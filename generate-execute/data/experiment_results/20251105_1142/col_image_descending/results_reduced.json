@@ -1,0 +1,74 @@
+{
+  "E0": {
+    "held_out_idx": 0,
+    "ascending": {
+      "similarity": 0.62,
+      "uncertainty": "The test case instructions contained minor discrepancies with the provided input grid. Specifically, 'Region 3' was defined as 'K11:P16' while the visual boundaries enclose 'J11:P15'. Also, a seed pixel was located at 'S19' in the instructions but appeared at 'S2' in the grid. I proceeded by assuming these were typos in the instructions and followed the logic based on the actual visual data of the grid, which led to a consistent solution.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.6675,
+      "uncertainty": "The test case instructions state that the yellow(4) seed for Region 2 is at S19. However, the provided input grid data (both text and image) clearly shows this seed at S2. This is a factual discrepancy. The solution was generated based on the logic that only the set of unique seed colors matters, not their specific locations, so this error did not block the solution process. Additionally, the general instruction for spiral fills mentions 'concentric rectangular layers', which is not applicable to the non-rectangular Region 2. I assumed the intended procedure for such shapes is a layered fill based on the shortest distance to the region's boundary, which generates a visually similar spiral effect.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.6675
+  },
+  "E1": {
+    "held_out_idx": 1,
+    "ascending": {
+      "similarity": 0.135,
+      "uncertainty": "The instructions for handling regions with more than two seed colors were incomplete. The general instruction for this case (len(S) > 2) referred to a 'recursive framing and filling procedure (as seen in E1)', but example E1 was not provided. The specific instruction for the test case's right-hand region, which had 4 seeds, stated 'The output shows a recursive fill', which describes a result rather than providing a method to generate it. Due to this lack of information, I could not transform the right-hand region (columns L through T). I made the assumption that if a rule for transformation is not fully defined, no transformation should be applied. Consequently, I only transformed the left-hand region as per its clear instructions and left the right-hand region and the boundary line identical to the input grid.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.195,
+      "uncertainty": "The instructions for the test case contained several points of ambiguity or missing information, requiring assumptions to proceed. 1. There is a typo in instruction T0.2: 'row 12' is mentioned as a boundary, but the input grid data clearly shows the horizontal boundary line is at row 13. I proceeded assuming row 13 was intended. 2. Instruction T0.2 mentions a 'red cross' partitioning the grid, but then instructions T0.3 and T0.4 define the regions as two large vertical halves (A1:J20 and L1:T20), which implies the horizontal part of the cross is ignored for the filling process. I followed this interpretation, keeping the vertical boundary but not the horizontal one. 3. Instruction T0.4 for the right region is incomplete. It identifies the case as complex (4 seed colors) and states 'The output shows a recursive fill' without defining this procedure. The working hypothesis also states this rule is 'not fully determined'. To resolve this, I made the following assumptions: a) 'Recursive fill' means filling with nested rectangular frames. b) The frame colors are the unique seed colors from the region. c) The order of the frame colors is determined by the seed color's numeric proximity to the background color (4), from smallest difference to largest. d) A tie in proximity (for colors 0 and 8, both with a difference of 4 from the background) is broken by choosing the smaller color value first. This resulted in the color order {5, 1, 0, 8}. e) The centermost area is filled with the last color in the sequence (8).",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.195
+  },
+  "E2": {
+    "held_out_idx": 2,
+    "ascending": {
+      "similarity": 0.8153846153846154,
+      "uncertainty": "The instructions were mostly clear. There was a slight ambiguity regarding the magenta(6) color. Step 1 identified it as the 'boundary color', but Step 4 identified a line of magenta as 'seeds' within the right-hand region. I resolved this by assuming the specific instruction for the region (seeds) took precedence over the general identification (boundary), and that only the vertical magenta line in column G functioned as the partitioning boundary. I also assumed the boundary line itself remains unchanged in the output, which is a common convention.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.8153846153846154,
+      "uncertainty": "There was a contradiction between the General Instructions and the Test Case Instructions. General Instruction #4 states that seed pixels are 'not background or boundary'. However, Test Case Instruction #4 for the Right Region identifies the magenta(6) line as a seed, even though magenta(6) was established as the boundary color in step #1. I followed the specific Test Case Instructions as directed, which led to treating the horizontal magenta line as a seed feature within the right region, rather than a boundary that would have further subdivided it. This resulted in a solid orange(7) fill for the entire right region (H1:M10).",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.8153846153846154
+  },
+  "T0": {
+    "test_idx": 0,
+    "ascending": {
+      "similarity": 0.23777777777777778,
+      "uncertainty": "The instructions for handling regions with 3 seed colors (the 'complex case') were not fully defined in the general rules. For test case T0, the instruction 'frame of magenta(6)' was given. Based on the pattern in a training example (E1), I assumed this meant a recursive framing process: fill the outer 1-pixel border with the highest-indexed seed color (magenta 6), then apply the standard rules to the inner region with the remaining seeds. This led to filling the interior of the magenta frame with a spiral of the other two seeds (yellow 4 and gray 5). Also, the region coordinates given in the instructions (e.g., 'G26:T29') appeared to describe a bounding box including the boundary lines, so I interpreted the fill operation to apply only to the enclosed area (H27:S30).",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.26,
+      "uncertainty": "The provided step-by-step instructions contained some ambiguities that required assumptions. 1) The coordinate ranges given for some regions did not align with the locations of the seeds they were said to contain (e.g., region 'M9:T14' for seeds at S9 and T10). I assumed the seed locations were the ground truth and identified the correct region based on the teal boundaries. 2) For the 3-seed 'complex case', the instruction was to draw a frame with the highest-indexed color and then perform a 'recursive fill'. The next step of the recursion was not specified. I assumed the standard 2-seed spiral rule should be applied to the remaining inner region. 3) The range for the bottom-most region was given as 'G26:T29', but the grid's boundary structure suggests the fillable area extends to the bottom row (row 30). I assumed the fill should cover the entire region down to the grid edge.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.26,
+    "has_ground_truth": true
+  },
+  "T1": {
+    "test_idx": 1,
+    "ascending": {
+      "similarity": 0.22666666666666666,
+      "uncertainty": "The instructions for 'Complex case' (regions with >2 seed colors) were absent; I assumed these regions remain unchanged. Some region boundaries in the instructions (e.g., 'I1:P8', 'W25:AD29') did not match the grid's partitioning lines; I applied the logic to the actual, larger regions defined by the lines. I also assumed that only background pixels are filled, leaving seed pixels untouched.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.21555555555555556,
+      "uncertainty": "The instructions for regions with 3 or more seed colors (e.g., I1:P8, A10:G15, I17:P23) label them as a 'Complex case' but do not specify what transformation to apply. The general instructions mention a 'recursive framing and filling procedure' but do not explain it. I assumed that 'Complex case' means the region should be left unchanged, as this was the only way to proceed without further information.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.22666666666666666,
+    "has_ground_truth": true
+  }
+}

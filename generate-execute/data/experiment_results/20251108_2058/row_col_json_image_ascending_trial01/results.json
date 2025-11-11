@@ -1,0 +1,34 @@
+{
+  "E0": {
+    "held_out_idx": 0,
+    "similarity": 0.9,
+    "uncertainty": "There was a conflict between the general rule 'All divider cells remain unchanged' and the specific test case instruction 'Middle region (J11:T15): ... This region is filled with a solid spiral (fill) of green'. The specified region J11:T15 contains a vertical divider line segment (Q11:Q15) in the input grid. I assumed the specific instruction for the test case takes precedence, meaning the fill operation for the rectangular region overwrites the divider cells within it. This resolved the ambiguity.",
+    "reasoning_content": null
+  },
+  "E1": {
+    "held_out_idx": 1,
+    "similarity": 0.7,
+    "uncertainty": "",
+    "reasoning_content": null
+  },
+  "E2": {
+    "held_out_idx": 2,
+    "similarity": 1.0,
+    "uncertainty": "",
+    "reasoning_content": null
+  },
+  "T0": {
+    "test_idx": 0,
+    "similarity": 0.5155555555555555,
+    "uncertainty": "",
+    "reasoning_content": null,
+    "has_ground_truth": true
+  },
+  "T1": {
+    "test_idx": 1,
+    "similarity": 0.43,
+    "uncertainty": "The test case instructions define four 'panels' (A1:G30, J1:P30, R1:U30, W1:AD30). This implies vertical divisions exist between columns G-J, P-R, and U-W. In the input grid, only column H is a solid vertical divider line. Columns I, Q, V are not solid dividers. I assumed the panel definitions in the instructions were correct and overrode the general rule for identifying dividers, treating columns H, I, Q, and V as the conceptual boundaries between the specified panels.",
+    "reasoning_content": null,
+    "has_ground_truth": true
+  }
+}

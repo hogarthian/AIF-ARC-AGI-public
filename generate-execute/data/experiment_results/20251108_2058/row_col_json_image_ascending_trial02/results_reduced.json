@@ -1,0 +1,34 @@
+{
+  "E0": {
+    "held_out_idx": 0,
+    "similarity": 0.9325,
+    "uncertainty": "The step-by-step instructions for the test case contained area calculations for the regions that did not match my own calculations based on the input grid. For example, Region 3 was described as having an area of 40 cells, but my count of the fillable cells in that region was 35. Similarly, Region 2 was described as having an area of 170, while my count was 164. However, the logical conclusions drawn from these areas (e.g., 'area <= 40 -> apply flood fill') were still correct with my calculated values, so I proceeded by following the specified transformation type (flood fill or spiral) for each region.",
+    "reasoning_content": null
+  },
+  "E1": {
+    "held_out_idx": 1,
+    "similarity": 0.635,
+    "uncertainty": "",
+    "reasoning_content": null
+  },
+  "E2": {
+    "held_out_idx": 2,
+    "similarity": 1.0,
+    "uncertainty": "The General Instructions contained a minor contradiction: Step 4 defines a 'region' as a component of background color, while Step 5b implies finding non-background 'seeds' within that same region. The specific Test Case Instructions resolved this by defining regions as the grid partitions created by the separator lines (e.g., 'Region 1 (Left, A1:F10)'), which is the interpretation I followed.",
+    "reasoning_content": null
+  },
+  "T0": {
+    "test_idx": 0,
+    "similarity": 0.2677777777777778,
+    "uncertainty": "The instructions were very clear and provided a complete algorithm. The only minor ambiguity arose from the coordinate-based region descriptions (e.g., 'S9:X14') not perfectly matching the shape of the 4-connected component in the grid. I resolved this by prioritizing the more fundamental rule of identifying the full 4-connected component, using the coordinates as a starting point to locate each region. The manual process of tracing the spiral fill for complex shapes is prone to small errors, but the logic was followed as precisely as possible.",
+    "reasoning_content": null,
+    "has_ground_truth": true
+  },
+  "T1": {
+    "test_idx": 1,
+    "similarity": 0.5177777777777778,
+    "uncertainty": "The provided test case instructions contained several discrepancies with the grid structure and the general hypothesis. I made the following assumptions to resolve them:\n1. Region boundaries and areas listed in the instructions were often incorrect (e.g., 'A10:G14' for a region that is actually 'A10:G30' based on 4-connectivity). I prioritized the 4-connected component rule from the hypothesis to define the true regions.\n2. The instructions omitted several regions that contained no 'seed' colors. I identified these regions and left them unchanged (filled with the background color) as per the general rules.\n3. For one region ('Region 4', corresponding to my identified region at I10:P15), the instruction to 'flood fill' contradicted the general rule which would require a spiral fill (since its area of 48 is > 40). I followed the specific test case instruction, assuming it was an intentional exception.",
+    "reasoning_content": null,
+    "has_ground_truth": true
+  }
+}

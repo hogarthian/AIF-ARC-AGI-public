@@ -1,0 +1,104 @@
+{
+  "T0-bug-fix": {
+    "test_idx": 0,
+    "ascending": {
+      "similarity": 0.0,
+      "uncertainty": "",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.0,
+      "uncertainty": "",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.0,
+    "has_ground_truth": false
+  },
+  "T1-bug-fix": {
+    "test_idx": 1,
+    "ascending": {
+      "similarity": 0.0,
+      "uncertainty": "The instructions for filling a region with multiple 'fill' colors state to 'tile the relative pattern of the remaining fill seeds'. For regions 2 and 3, the fill seeds formed a small, compact 2x2 pattern which was tiled. For region 4, the fill seeds were numerous and spread across the entire interior. I assumed that in this case, 'tiling the pattern' means reproducing the original arrangement of all fill seeds within the new border. I also assumed that any original seeds whose color was selected as the new border color (brown, 9) should be replaced with the background color (teal, 8) in the filled interior, as their color information has been 'used up' by the border.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.0,
+      "uncertainty": "The instructions for filling regions with multiple seed colors required interpretation. The phrase 'tiling the relative pattern of the remaining fill seeds' was understood to mean: 1. Determine the bounding box of only the 'fill' seeds (excluding the one used for the border). 2. Use this bounding box, with all fill seeds in their relative positions and the region's background color elsewhere, as a tile pattern. 3. Tile this pattern over the entire fill area of the output region. This approach was complex for Region 4 due to the large and sparse pattern of its fill seeds, but it seemed the most faithful interpretation of the provided instructions.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.0,
+    "has_ground_truth": false
+  },
+  "E0": {
+    "held_out_idx": 0,
+    "ascending": {
+      "similarity": 0.4925,
+      "uncertainty": "1. Seed Location Discrepancy: The seed locations in the text instructions (e.g., P16) differed from the input grid data (e.g., P11). I followed the text instructions as the primary source of truth. 2. 'Complex Shape' Ambiguity: The rule for generating a 'complex shape' was described as 'not fully generalizable', which created an apparent contradiction in the documentation. I assumed the output shape is always a rectangle filling its region, and the rule only affects the color selection method (top-left seed vs. max-index seed). 3. Tiling Background Color: I assumed the background of the repeating tile pattern should be the region's main background color (blue, 1), as this was not explicitly defined.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.1975,
+      "uncertainty": "1. Seed Identification Discrepancy: The instructions for T0, Region 2, listed only seeds with colors {3, 4, 8}. However, the input grid for that region also contained many red (2) pixels, which according to general rules should also be seeds as they are not the background color (1). I followed the specific T0 instructions and ignored the red pixels. 2. Seed Location Discrepancy: The instructions for T0, Region 2, listed seed locations as P16, S19, T20. The actual locations in the input grid are P11, S2, and T1. I assumed the instructions contained typos and used the actual grid locations. 3. Ambiguous 'Complex Shape' Rule: The instructions for T0, Region 1, required generating a 'complex shape', but the rule was not defined. I assumed the shape corresponds to the seed bounding box (A1:B2), is first filled entirely with the border color (7), and then the fill color (8) is placed at the original relative position of its seed (B2), resulting in a 2x2 shape of [[7, 7], [7, 8]].",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.4925
+  },
+  "E1": {
+    "held_out_idx": 1,
+    "ascending": {
+      "similarity": 0.47,
+      "uncertainty": "The instructions for the test case contained several points of ambiguity and contradiction with the visual input grid, requiring assumptions to proceed. 1. The instruction for Region 1 specified a \"complex 'E' shape\" but did not define its size, form, or exact placement. I assumed a standard 5-row by 3-column block 'E' placed with its top-left corner at the location of the seed pixel (B2). 2. The instructions for Region 2 were internally inconsistent and conflicted with the input grid: a) The specified list of seeds ({8, 5, 1, 0}) omitted other non-background colors present in the region (the red '2's). b) The specified seed Bounding Box (L12:N16) was inconsistent with the actual locations of the seeds in the input grid. To resolve this, I followed the final descriptive instruction for the region's output ('a rectangle ... with a teal border and an interior tiled with the gray/blue/black pattern'), using the specified border color (teal) and deriving the tiling pattern from the relative positions of the specified fill colors (gray, black, blue), assuming their locations were L14, M15, and N16 respectively.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.4725,
+      "uncertainty": "I encountered several points of ambiguity or contradiction in the instructions. 1. The instruction for Region 1 specified the output as a 'complex E shape' without providing any rules for its generation, size, or placement. I had to invent a plausible block 'E' shape and position it based on the seed location. 2. The specific instructions for T0 ignored a horizontal red line at row 13, which, according to the general rules, should have acted as a boundary and further partitioned Region 2. I followed the specific instruction to treat Region 2 as a single area. 3. The instructions provided a seed bounding box (L12:N16) that was inconsistent with the actual locations of all seeds in the input grid (which would form a BBox of L1:N16). This created ambiguity about which seeds to use for the tiling pattern. I resolved this by assuming the pattern should be derived only from the seeds within the specified (but incorrect) BBox, as this aligned with the description 'tiled with the gray/blue/black pattern'.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.4725
+  },
+  "E2": {
+    "held_out_idx": 2,
+    "ascending": {
+      "similarity": 0.5384615384615384,
+      "uncertainty": "The instructions for test case T0 were mostly clear, but required some assumptions. First, the term 'complex U shape' for Region 1 was not precisely defined. The working hypothesis noted this shape was 'not fully generalizable'. I assumed it meant a standard U-shape with a 1-pixel border, centered within its region (with a 1-pixel margin) and drawn on the region's background color. Second, the instructions did not explicitly state whether to preserve the boundary lines in the output; I assumed they should be copied over. Third, the step-by-step instructions for the test case did not cover the sub-region from H8:M10. I followed the general rule for regions with no seeds, which states the region should be left unchanged.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.8615384615384616,
+      "uncertainty": "The instructions for test case T0 mention a 'complex \"U\" shape' for Region 1 but do not specify its exact geometry. I assumed it to be a simple, upright U-shape with a 1-pixel border, open at the top, spanning the width of the region. Additionally, the instructions did not explicitly mention how to handle the sub-region H8:M10. I inferred from the general instructions that since it contains no 'seed' pixels, it should remain unchanged.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.8615384615384616
+  },
+  "T0": {
+    "test_idx": 0,
+    "ascending": {
+      "similarity": 0.03222222222222222,
+      "uncertainty": "The instructions contained a potential ambiguity with the phrase 'tiling the relative pattern'. However, for this specific test case, the area to be filled and the source area for the pattern had identical dimensions, making the instruction equivalent to a direct copy-and-filter operation. I proceeded with this straightforward interpretation, as it seemed the most logical way to follow the very specific test case instructions. If the areas had been different sizes, the meaning of 'tiling' and 'relative pattern' would have required more assumptions.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.03333333333333333,
+      "uncertainty": "The instruction in step 3, 'The seed BBox is A1:AD29', contradicts the input data which has seeds in row 30 (making the BBox A1:AD30). I followed the instruction as written. The method for creating the 'relative pattern' for tiling was assumed to be based on the bounding box of the fill seeds, as this was not explicitly defined.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.03333333333333333,
+    "has_ground_truth": true
+  },
+  "T1": {
+    "test_idx": 1,
+    "ascending": {
+      "similarity": 0.2544444444444444,
+      "uncertainty": "For region I10:AD30, the instruction was to 'tile' a large, complex pattern of 'fill seeds'. The source pattern (17x22) did not evenly fit into the destination fill area (19x20). I assumed a standard modulo-based tiling approach, where the source pattern repeats to fill the destination. This interpretation seemed the most robust way to follow the instructions, but the term 'tiling a relative pattern' was ambiguous for this complex case.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.2411111111111111,
+      "uncertainty": "The instructions for tiling the fill pattern in Region 4 (I10:AD30) lead to a contradiction. The bounding box of the fill seeds creates a tile pattern that is 22 columns wide, but the interior area to be filled is only 20 columns wide. I have assumed that the tile pattern should be cropped from the right to a width of 20 columns to resolve this conflict.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.2544444444444444,
+    "has_ground_truth": true
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "E0": {
+    "held_out_idx": 0,
+    "similarity": 0.8825,
+    "uncertainty": "",
+    "reasoning_content": null
+  },
+  "E1": {
+    "held_out_idx": 1,
+    "similarity": 0.48,
+    "uncertainty": "The test case instructions for 'Region 1' specified a coordinate range of 'A1:J12'. However, based on the input grid and the general instructions, the actual 4-connected region of the fillable color (yellow) extends over the entire 'A1:J20' area. Treating 'A1:J12' as a distinct region would make it convex, which according to the general rules would require a 'flood fill', contradicting the specific instruction to use 'alternating concentric frames'. By assuming the instruction's coordinates were an imprecise description of the full 'A1:J20' region, the region becomes 'non-convex', which correctly aligns with the specified 'alternating concentric frames' filling method. I proceeded with this assumption, applying the pattern fill to the entire 'A1:J20' area.",
+    "reasoning_content": null
+  },
+  "E2": {
+    "held_out_idx": 2,
+    "similarity": 1.0,
+    "uncertainty": "",
+    "reasoning_content": null
+  },
+  "T0": {
+    "test_idx": 0,
+    "similarity": 0.4822222222222222,
+    "uncertainty": "The test case instructions had two points of ambiguity. First, for Region 3 (V1:AD7 approx), the instruction mentioned a seed 'Red(2) at V22', but the input grid has no such seed in or near that region; the region is devoid of seeds. I proceeded assuming it has no seeds and should remain unchanged, per the general rules. Second, for Region 2 (M1:T7 approx), the instruction listed only 'Magenta(6) at M1' as the seed, but the grid shows that Yellow(4) at N2 and Gray(5) at O3 are also adjacent to this same region. I assumed all three seeds should be used to create the fill pattern, as this is more consistent with the general rules for regions with multiple seeds.",
+    "reasoning_content": null,
+    "has_ground_truth": true
+  },
+  "T1": {
+    "test_idx": 1,
+    "similarity": 0.64,
+    "uncertainty": "",
+    "reasoning_content": null,
+    "has_ground_truth": true
+  }
+}

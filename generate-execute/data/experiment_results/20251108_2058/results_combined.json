@@ -1,0 +1,365 @@
+{
+  "experiment_note": "EXPERIMENT: Output Diversity Baseline - Multiple Sampling\n\nPurpose:\nThis experiment measures output diversity when sampling multiple times with the same parameters\n(modality, order, temperature) without changing the training example order. This serves as a\nbaseline to compare against order augmentation experiments.\n\nConfiguration:\n- Modality: row_col_json_image\n- Order: ascending (fixed)\n- Temperature: 0.7\n- Number of trials: 4\n- Model: gemini/gemini-2.5-pro\n\nHypothesis:\nOur paper claims that varying training example orders can produce more diverse results than\nsimple multiple sampling. This experiment provides the baseline for that comparison.\n\nExpected Analysis:\nCompare the diversity of outputs across these 4 trials with the diversity\nobserved when using different training example orders (ascending vs descending) in the\ncross-order experiment.\n",
+  "num_trials": 4,
+  "modality_type": "row_col_json_image",
+  "example_order": "ascending",
+  "model": "gemini/gemini-2.5-pro",
+  "temperature": 0.7,
+  "rpm": 60,
+  "num_train": 3,
+  "num_test": 2,
+  "trials": [
+    {
+      "session_id": "13e47133-simplified_experiment-20251108_2058-trial01",
+      "trial_num": 1,
+      "model": "gemini/gemini-2.5-pro",
+      "temperature": 0.7,
+      "rpm": 60,
+      "num_train": 3,
+      "num_test": 2,
+      "modality_type": "row_col_json_image",
+      "example_order": "ascending",
+      "result": {
+        "modality_type": "row_col_json_image",
+        "example_order": "ascending",
+        "held_out_results": [
+          {
+            "held_out_idx": 0,
+            "similarity": 0.9,
+            "uncertainty": "There was a conflict between the general rule 'All divider cells remain unchanged' and the specific test case instruction 'Middle region (J11:T15): ... This region is filled with a solid spiral (fill) of green'. The specified region J11:T15 contains a vertical divider line segment (Q11:Q15) in the input grid. I assumed the specific instruction for the test case takes precedence, meaning the fill operation for the rectangular region overwrites the divider cells within it. This resolved the ambiguity.",
+            "reasoning_content": null
+          },
+          {
+            "held_out_idx": 1,
+            "similarity": 0.7,
+            "uncertainty": "",
+            "reasoning_content": null
+          },
+          {
+            "held_out_idx": 2,
+            "similarity": 1.0,
+            "uncertainty": "",
+            "reasoning_content": null
+          }
+        ],
+        "test_results": [
+          {
+            "test_idx": 0,
+            "similarity": 0.5155555555555555,
+            "uncertainty": "",
+            "reasoning_content": null,
+            "has_ground_truth": true
+          },
+          {
+            "test_idx": 1,
+            "similarity": 0.43,
+            "uncertainty": "The test case instructions define four 'panels' (A1:G30, J1:P30, R1:U30, W1:AD30). This implies vertical divisions exist between columns G-J, P-R, and U-W. In the input grid, only column H is a solid vertical divider line. Columns I, Q, V are not solid dividers. I assumed the panel definitions in the instructions were correct and overrode the general rule for identifying dividers, treating columns H, I, Q, and V as the conceptual boundaries between the specified panels.",
+            "reasoning_content": null,
+            "has_ground_truth": true
+          }
+        ],
+        "held_out_results_reduced": [
+          {
+            "held_out_idx": 0,
+            "similarity": 0.93,
+            "uncertainty": "",
+            "reasoning_content": null
+          },
+          {
+            "held_out_idx": 1,
+            "similarity": 0.7,
+            "uncertainty": "",
+            "reasoning_content": null
+          },
+          {
+            "held_out_idx": 2,
+            "similarity": 1.0,
+            "uncertainty": "",
+            "reasoning_content": null
+          }
+        ],
+        "test_results_reduced": [
+          {
+            "test_idx": 0,
+            "similarity": 0.5066666666666667,
+            "uncertainty": "The instructions for Test Case T0 specified a seed cell at coordinate V2 with color 2 (red). However, in the provided input grid, the red cell in that area is at V1. I assumed this was a minor typo in the instructions and proceeded using the seed at V1. This did not change the resulting color sequence for the region, which was [2], so the final output should be correct according to the overall pattern.",
+            "reasoning_content": null,
+            "has_ground_truth": true
+          },
+          {
+            "test_idx": 1,
+            "similarity": 0.4533333333333333,
+            "uncertainty": "The instructions state 'Vertical dividers at columns H, I, Q, V'. However, an examination of the input grid shows that only column H is a complete vertical line of the divider color (1). Columns I, Q, and V contain other colors and are not simple vertical dividers. I proceeded by assuming the panel boundaries and regions defined in the step-by-step instructions (e.g., Panel 1 at A1:G30) were the intended logical partitions, even though they don't perfectly align with a strict definition of dividers based on the grid data. Additionally, some seed coordinates in the instructions for Panel 2 appeared to be off by one column (e.g., 'J17(4)' which is at I17, 'K18(9)' which is at J18, 'I8(2)' which was corrected to 'J8(2)' but is actually at I8). I followed the color sequences provided, which seem to be derived from the actual seed locations, assuming the coordinates in the instructions were typos.",
+            "reasoning_content": null,
+            "has_ground_truth": true
+          }
+        ],
+        "has_reasoning_content": true
+      }
+    },
+    {
+      "session_id": "13e47133-simplified_experiment-20251108_2058-trial02",
+      "trial_num": 2,
+      "model": "gemini/gemini-2.5-pro",
+      "temperature": 0.7,
+      "rpm": 60,
+      "num_train": 3,
+      "num_test": 2,
+      "modality_type": "row_col_json_image",
+      "example_order": "ascending",
+      "result": {
+        "modality_type": "row_col_json_image",
+        "example_order": "ascending",
+        "held_out_results": [
+          {
+            "held_out_idx": 0,
+            "similarity": 0.93,
+            "uncertainty": "The instructions mention filling regions with a 'spiral pattern'. For the non-rectangular region, this term is ambiguous. I interpreted 'spiral' as a series of concentric layers, where a cell's layer is determined by its Chebyshev distance (maximum coordinate difference) to the nearest cell outside the region. This method is consistent with the rectangular spiral patterns seen in other examples and provides a logical way to generalize the pattern to complex shapes.",
+            "reasoning_content": null
+          },
+          {
+            "held_out_idx": 1,
+            "similarity": 0.65,
+            "uncertainty": "The test case instructions specify four regions, including a distinct 'Bottom-Left' and 'Bottom-Right' quadrant. In the input grid, these two quadrants are connected by background-colored cells, forming a single contiguous region. I followed the instructions by treating them as two separate regions, assuming this was the intended logical structure despite the visual input. The instructions for the bottom-left region started at row 14, leaving row 13 (A13:J13) undefined. I included these cells in the bottom-left region; as this region was specified to be left unchanged, this choice did not alter the final output.",
+            "reasoning_content": null
+          },
+          {
+            "held_out_idx": 2,
+            "similarity": 1.0,
+            "uncertainty": "",
+            "reasoning_content": null
+          }
+        ],
+        "test_results": [
+          {
+            "test_idx": 0,
+            "similarity": 0.2577777777777778,
+            "uncertainty": "",
+            "reasoning_content": null,
+            "has_ground_truth": true
+          },
+          {
+            "test_idx": 1,
+            "similarity": 0.38222222222222224,
+            "uncertainty": "The test case instructions contained several discrepancies. First, the region definitions provided (e.g., `I1:AD8` and `I16:AD23`) contradicted the visible separator lines in the input grid (e.g., the blue line in column V), which according to the general rules should have split these regions. I followed the explicit region definitions from the test instructions. Second, the area calculations for some regions (e.g., Region 6: 168 cells, Region 7: 60 cells) were inconsistent with the provided coordinate ranges. I followed the coordinate ranges and ignored the inconsistent area numbers. Third, the instructions for Region 3 and 5 mentioned seeds outside the region's boundaries; I followed the final conclusion given in the instructions for which seeds to use or to consider the region as seedless.",
+            "reasoning_content": null,
+            "has_ground_truth": true
+          }
+        ],
+        "held_out_results_reduced": [
+          {
+            "held_out_idx": 0,
+            "similarity": 0.9325,
+            "uncertainty": "The step-by-step instructions for the test case contained area calculations for the regions that did not match my own calculations based on the input grid. For example, Region 3 was described as having an area of 40 cells, but my count of the fillable cells in that region was 35. Similarly, Region 2 was described as having an area of 170, while my count was 164. However, the logical conclusions drawn from these areas (e.g., 'area <= 40 -> apply flood fill') were still correct with my calculated values, so I proceeded by following the specified transformation type (flood fill or spiral) for each region.",
+            "reasoning_content": null
+          },
+          {
+            "held_out_idx": 1,
+            "similarity": 0.635,
+            "uncertainty": "",
+            "reasoning_content": null
+          },
+          {
+            "held_out_idx": 2,
+            "similarity": 1.0,
+            "uncertainty": "The General Instructions contained a minor contradiction: Step 4 defines a 'region' as a component of background color, while Step 5b implies finding non-background 'seeds' within that same region. The specific Test Case Instructions resolved this by defining regions as the grid partitions created by the separator lines (e.g., 'Region 1 (Left, A1:F10)'), which is the interpretation I followed.",
+            "reasoning_content": null
+          }
+        ],
+        "test_results_reduced": [
+          {
+            "test_idx": 0,
+            "similarity": 0.2677777777777778,
+            "uncertainty": "The instructions were very clear and provided a complete algorithm. The only minor ambiguity arose from the coordinate-based region descriptions (e.g., 'S9:X14') not perfectly matching the shape of the 4-connected component in the grid. I resolved this by prioritizing the more fundamental rule of identifying the full 4-connected component, using the coordinates as a starting point to locate each region. The manual process of tracing the spiral fill for complex shapes is prone to small errors, but the logic was followed as precisely as possible.",
+            "reasoning_content": null,
+            "has_ground_truth": true
+          },
+          {
+            "test_idx": 1,
+            "similarity": 0.5177777777777778,
+            "uncertainty": "The provided test case instructions contained several discrepancies with the grid structure and the general hypothesis. I made the following assumptions to resolve them:\n1. Region boundaries and areas listed in the instructions were often incorrect (e.g., 'A10:G14' for a region that is actually 'A10:G30' based on 4-connectivity). I prioritized the 4-connected component rule from the hypothesis to define the true regions.\n2. The instructions omitted several regions that contained no 'seed' colors. I identified these regions and left them unchanged (filled with the background color) as per the general rules.\n3. For one region ('Region 4', corresponding to my identified region at I10:P15), the instruction to 'flood fill' contradicted the general rule which would require a spiral fill (since its area of 48 is > 40). I followed the specific test case instruction, assuming it was an intentional exception.",
+            "reasoning_content": null,
+            "has_ground_truth": true
+          }
+        ],
+        "has_reasoning_content": true
+      }
+    },
+    {
+      "session_id": "13e47133-simplified_experiment-20251108_2058-trial03",
+      "trial_num": 3,
+      "model": "gemini/gemini-2.5-pro",
+      "temperature": 0.7,
+      "rpm": 60,
+      "num_train": 3,
+      "num_test": 2,
+      "modality_type": "row_col_json_image",
+      "example_order": "ascending",
+      "result": {
+        "modality_type": "row_col_json_image",
+        "example_order": "ascending",
+        "held_out_results": [
+          {
+            "held_out_idx": 0,
+            "similarity": 0.935,
+            "uncertainty": "The instruction for 'Other Regions' was complex, containing a correction. I interpreted the 'simpler rule' ('a larger 4-connected non-divider component... the spiral fills this complex shape') by defining a bounding box for the entire component (J1:T20), generating a spiral fill for that box, and then applying those colors to only the background (blue) cells within the complex shape. This seemed the most robust way to apply a rectangular spiral algorithm to a non-rectangular area and produced a result consistent with the idea of the pattern propagating from the seeded sub-region.",
+            "reasoning_content": null
+          },
+          {
+            "held_out_idx": 1,
+            "similarity": 0.925,
+            "uncertainty": "",
+            "reasoning_content": null
+          },
+          {
+            "held_out_idx": 2,
+            "similarity": 1.0,
+            "uncertainty": "The instructions were mostly clear, but there was a minor ambiguity in the definition of regions. For example, in Test T0, Region 2 was defined as `G1:M6`, which includes the divider line in column G. This created a situation where the inheritance rule for Region 3 (H8:M10) seemed contradictory. The general rule suggests inheritance should occur if column spans match. The actual fillable areas of Region 2 (columns H-M) and Region 3 (columns H-M) have matching column spans. However, the test instruction explicitly stated that the spans (`G-M` vs `H-M`) did not match and thus inheritance should not occur. I followed the specific test instruction, which resolved the ambiguity for this case, but the underlying definition of a region's span for the purpose of inheritance could be clarified.",
+            "reasoning_content": null
+          }
+        ],
+        "test_results": [
+          {
+            "test_idx": 0,
+            "similarity": 0.5311111111111111,
+            "uncertainty": "The instructions provide explicit rectangular regions for filling (e.g., 'Region 1 (A1:K24)', 'Region 6 (G26:T29)'). However, these regions do not seem to align perfectly with the regions formed by the divider lines as described in the general hypothesis. For instance, Region 6 spans across a vertical divider line, and its starting coordinate (G26) is part of a horizontal divider. I have proceeded by strictly adhering to the specified rectangular boundaries and only modifying the background-colored cells within them, assuming this was the intended interpretation despite the apparent inconsistency with the general partitioning rule.",
+            "reasoning_content": null,
+            "has_ground_truth": true
+          },
+          {
+            "test_idx": 1,
+            "similarity": 0.45666666666666667,
+            "uncertainty": "The provided step-by-step instructions for the test case contained several inconsistencies and apparent errors. I had to make assumptions to resolve them based on the general hypothesis and the input grid's structure. Specifically: 1) Region coordinates in the instructions were frequently incorrect (e.g., 'A10:F29' for a region that clearly spans A10:G30). I corrected these based on the actual divider lines and seed locations. 2) Instructions for 'Region 4 (I10:P14)' and 'Region 6 (Q10:AD14)' were contradictory. One instruction stated I10:P14 was empty, while a note in another correctly placed a seed within it. Also, this area was split into multiple regions in the instructions without a corresponding divider line in the input. I chose to treat the entire area defined by the actual dividers (I10:AD15) as a single region and applied the general rules to it, which seemed the most logical approach.",
+            "reasoning_content": null,
+            "has_ground_truth": true
+          }
+        ],
+        "held_out_results_reduced": [
+          {
+            "held_out_idx": 0,
+            "similarity": 0.945,
+            "uncertainty": "The instructions for 'Other Regions' in test case T0 provided two different rules: one based on the 'nearest available seeded region' and a 'correction' based on a '4-connected non-divider component'. I followed the corrected rule, assuming it supersedes the first one. This could be a point of confusion. The generalization of a 'spiral fill' to a non-rectangular shape was interpreted as a layered fill based on distance from the shape's boundary, which seemed the most logical approach but was not explicitly defined in the general instructions.",
+            "reasoning_content": null
+          },
+          {
+            "held_out_idx": 1,
+            "similarity": 0.8875,
+            "uncertainty": "The instructions for partitioning the grid were clear, but the specific spreadsheet coordinates given for the regions (e.g., 'A13:J20' for Region 3) seemed to include the divider line itself (row 13). I made the assumption that this was intentional and that the fill operation should be applied to this entire area. This assumption worked out because the fill logic correctly ignores non-background (i.e., divider) cells, so only the background parts of that row were affected as intended.",
+            "reasoning_content": null
+          },
+          {
+            "held_out_idx": 2,
+            "similarity": 1.0,
+            "uncertainty": "The instructions for the test case clarified a key ambiguity regarding region definitions. Specifically, for the inheritance rule (General Instruction 5e), the check for 'same column span' uses the textual bounding box from the instructions (e.g., 'G1:M6') rather than the physical area of background cells being filled (e.g., 'H1:M6'). I proceeded with this assumption, as it was explicitly stated in the test instructions for T0, resolving the conflict with a more literal interpretation of the general instructions.",
+            "reasoning_content": null
+          }
+        ],
+        "test_results_reduced": [
+          {
+            "test_idx": 0,
+            "similarity": 0.5355555555555556,
+            "uncertainty": "I assumed the instruction for Region 3, 'V2:AD10' with seed at 'V2', contained a typo and should have been 'V1:AD10'. The input grid's JSON data shows the red (2) seed at V1 (0-indexed coordinate 0, 21), not V2. My corrected region definition includes this seed, which seems necessary for the pattern logic to apply correctly.",
+            "reasoning_content": null,
+            "has_ground_truth": true
+          },
+          {
+            "test_idx": 1,
+            "similarity": 0.4577777777777778,
+            "uncertainty": "The region coordinates specified in the instructions contained several apparent typos (e.g., 'A10:F29' instead of the divider-bounded 'A10:G30'). I corrected these regions based on the visual divider lines. The instruction for region 4 was contradictory, stating it was both 'empty' and contained a seed; I assumed the seed was present. I also identified and processed several empty regions not mentioned in the instructions.",
+            "reasoning_content": null,
+            "has_ground_truth": true
+          }
+        ],
+        "has_reasoning_content": true
+      }
+    },
+    {
+      "session_id": "13e47133-simplified_experiment-20251108_2058-trial04",
+      "trial_num": 4,
+      "model": "gemini/gemini-2.5-pro",
+      "temperature": 0.7,
+      "rpm": 60,
+      "num_train": 3,
+      "num_test": 2,
+      "modality_type": "row_col_json_image",
+      "example_order": "ascending",
+      "result": {
+        "modality_type": "row_col_json_image",
+        "example_order": "ascending",
+        "held_out_results": [
+          {
+            "held_out_idx": 0,
+            "similarity": 0.63,
+            "uncertainty": "",
+            "reasoning_content": null
+          },
+          {
+            "held_out_idx": 1,
+            "similarity": 0.7025,
+            "uncertainty": "The working hypothesis and general instructions for generating spiral patterns (using Chebyshev distance) and filling inherited regions do not perfectly match the provided training example outputs. For instance, in example E0, the instructions imply the bottom-left inherited region should be a solid color, but the output shows a complex pattern. Similarly, the spiral pattern in the top-left region of E0 does not strictly follow the provided Chebyshev distance formula. However, the task is to 'Apply the test case instructions precisely'. Therefore, I have followed the instructions for test case T0 literally, using the specified Chebyshev method for generating spirals. The instructions for T0 also did not specify what to do with the background-colored cells in the region A13:J13 (row 12, columns 0-9). Based on the quadrant logic derived from the examples, this area is not part of the four main regions. As it was not mentioned, I assumed it should remain unchanged from the input.",
+            "reasoning_content": null
+          },
+          {
+            "held_out_idx": 2,
+            "similarity": 0.9076923076923077,
+            "uncertainty": "The 'General Instructions' define regions as maximal 4-connected components of the background color. For the test case, this would result in three regions, as the background cells at A7:F7 connect the top-left and bottom-left areas. However, the specific 'Test Case Instructions' partition the grid into four distinct regions (e.g., 'Top-Left (A1:F6)' and 'Bottom-Left (A8:F10)' are treated as separate). I followed the more specific test instructions. This created an ambiguity for the background cells at A7:F7, which are not mentioned in any of the four regions to be processed. I assumed these cells should remain unchanged, consistent with the behavior of the Bottom-Right region where the transformation was also skipped.",
+            "reasoning_content": null
+          }
+        ],
+        "test_results": [
+          {
+            "test_idx": 0,
+            "similarity": 0.5033333333333333,
+            "uncertainty": "When a no-seed region had multiple adjacent source regions in the same priority direction (e.g., two 'Above' neighbors), I assumed a tie-breaker rule of selecting the one whose contact points are further to the left. The test instructions also contained a minor typo ('seed at V2' instead of 'V1'), which I resolved by checking the input grid.",
+            "reasoning_content": null,
+            "has_ground_truth": true
+          },
+          {
+            "test_idx": 1,
+            "similarity": 0.38,
+            "uncertainty": "The test case instructions contained two discrepancies with the general rules and the input grid. 1. For the Top-Left region (A1:G8), the instruction specified a seed list of `[3, 4]`, but the general rule of row-major scanning of the input grid yields `[4, 3]`. I followed the general rule. 2. For the Bottom-Left region (A10:G30), the instruction listed seeds (I17, J18, K19) and a corresponding seed list that were outside the region's boundaries. I ignored this erroneous information and derived the seed list `[6, 5, 4]` from the actual seeds found within the region's boundaries.",
+            "reasoning_content": null,
+            "has_ground_truth": true
+          }
+        ],
+        "held_out_results_reduced": [
+          {
+            "held_out_idx": 0,
+            "similarity": 0.68,
+            "uncertainty": "",
+            "reasoning_content": null
+          },
+          {
+            "held_out_idx": 1,
+            "similarity": 0.7,
+            "uncertainty": "The specific instructions for Test T0 divided the grid into four regions, including a 'Top-Left' and 'Bottom-Left' region. However, based on the general instruction that regions are 'maximal 4-connected components of background-colored cells', the entire left side of the grid (columns A-J) constitutes a single, larger region. The specific instructions describe a process where the Bottom-Left region inherits from the Top-Left, while the more fundamental rule implies the entire single Left region is filled based on its own seed. Both interpretations fortuitously lead to the same final grid, so I proceeded with that result. The region descriptions in the specific test case instructions may have been slightly simplified for clarity.",
+            "reasoning_content": null
+          },
+          {
+            "held_out_idx": 2,
+            "similarity": 0.9384615384615385,
+            "uncertainty": "The step-by-step instructions for Test T0, step 3c, stated the Bottom-Left region was at coordinates A8:F10. However, the general instructions and hypothesis state that regions are 'maximal 4-connected components of background-colored cells'. Based on the input grid, the actual 4-connected component of background cells in that area is larger, spanning coordinates A7:F10. I followed the general rule, assuming the specific coordinate range in the test instruction was a minor typo, and calculated the spiral fill for the A7:F10 region.",
+            "reasoning_content": null
+          }
+        ],
+        "test_results_reduced": [
+          {
+            "test_idx": 0,
+            "similarity": 0.4911111111111111,
+            "uncertainty": "The instructions for test case T0c state that the seeds for region M2:T7 are [4, 5], but observation of the input grid shows an additional seed of color 6 at M1. I followed the explicit instruction and used only [4, 5]. There is a conceptual contradiction in the general instructions where a 'region' is defined as being composed of background cells but is also described as containing non-background 'seed' cells; I assumed that seeds are non-background, non-divider cells that are enclosed by or adjacent to a connected component of background cells. Finally, when a no-seed region was adjacent to multiple source regions in the highest-priority direction (e.g., 'Above'), I assumed that a region with its own primary seeds takes precedence as a source over a region that merely inherited its pattern.",
+            "reasoning_content": null,
+            "has_ground_truth": true
+          },
+          {
+            "test_idx": 1,
+            "similarity": 0.3422222222222222,
+            "uncertainty": "The Test Case Instructions presented several ambiguities and contradictions with the General Instructions, requiring significant assumptions to resolve. 1) For the Top-Left region, the specified seed list `[3, 4]` contradicts the `row-major` scan order defined in the General Instructions, which would yield `[4, 3]`. I followed the specific test instruction's list. 2) The instructions for the bottom half of the grid define logical regions and their corresponding seed lists in a way that conflicts with the primary partitioning rule (regions as 4-connected components of background). It appears that physically separate regions were logically grouped. To proceed, I assumed that all physical sub-regions belonging to a single logical group should be filled with spirals using the same shared seed list, but with each spiral's distance field calculated independently based on its own local boundaries.",
+            "reasoning_content": null,
+            "has_ground_truth": true
+          }
+        ],
+        "has_reasoning_content": true
+      }
+    }
+  ]
+}

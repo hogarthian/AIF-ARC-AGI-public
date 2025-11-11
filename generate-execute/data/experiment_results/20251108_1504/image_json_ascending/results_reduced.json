@@ -1,0 +1,34 @@
+{
+  "E0": {
+    "held_out_idx": 0,
+    "similarity": 0.595,
+    "uncertainty": "The test case instructions contradict the general instructions and the input grid's structure. Specifically:\n1. The instructions state there are four regions, but based on the '4-connected component of non-wall cells' rule from the general instructions, the top-left and bottom-left areas form a single region, resulting in only three regions total.\n2. The instructions for Region 4 state its border with the wall is 'L-shaped'. However, its border with the actual red (2) wall pixels is a single straight vertical line.\nTo resolve these contradictions, I assumed that the regions are defined as the four quadrants created by the idealized dividing axes of the wall (column I and row 10), and that the border analysis for Region 4 also refers to these idealized axes, not the literal red pixels. This interpretation makes the specific test case instructions internally consistent.",
+    "reasoning_content": null
+  },
+  "E1": {
+    "held_out_idx": 1,
+    "similarity": 0.74,
+    "uncertainty": "The primary uncertainty arose from a discrepancy between the specific test instructions and the input grid's structure. The instructions describe a 'cross' shaped wall and four resulting regions. However, the wall in the input grid is a T-shape, which only creates three 4-connected regions of the background color. I resolved this by assuming that the regions are defined not by strict connectivity but by a conceptual division of the grid into four quadrants along the main axes of the wall (column K and row 13). This interpretation allowed me to apply the specific instructions for all four described regions and produced a result consistent with the provided logic.",
+    "reasoning_content": null
+  },
+  "E2": {
+    "held_out_idx": 2,
+    "similarity": 0.9384615384615385,
+    "uncertainty": "The specific instructions for Test T0, step 5, state that Region 3 is at coordinates A8:F10. However, based on the wall definition (the magenta 'L' shape) and the general rule that regions are 4-connected components of non-wall cells, the bottom-left region is actually the larger area A7:F10. I assumed the coordinate range in the specific instruction was a minor error and followed the more general rule, defining Region 3 as the full 4-connected area A7:F10. This resulted in filling a 6x4 area instead of the 6x3 area implied by the specific instruction's coordinates.",
+    "reasoning_content": null
+  },
+  "T0": {
+    "test_idx": 0,
+    "similarity": 0.5166666666666667,
+    "uncertainty": "The provided step-by-step instructions for the test case contained several contradictions with the input grid and the general rules. Specifically: 1) The seed lists for the first two regions (`R(A1:K25)` and `R(M1:T7)`) did not match the seeds found within those regions according to the general rules. 2) The region labels (e.g., `R(M9:Q14)`) did not match the geometric location of the actual regions partitioned by the wall. 3) The seed list for the central 'hole' region was `[4,1]`, but the region's geometry (2 cells wide) only allows for a single-color fill under the 'outer layer' spiral algorithm; it cannot accommodate a two-color spiral. To resolve these conflicts, I prioritized the general instructions over the specific, seemingly flawed test case instructions. I assumed that magenta (color 6) is not a seed color, as it was consistently omitted from all provided seed lists. I also deduced that any region only 1 or 2 cells thick would be filled with a single color (the first in its seed list) because it constitutes a single 'outer layer'.",
+    "reasoning_content": null,
+    "has_ground_truth": true
+  },
+  "T1": {
+    "test_idx": 1,
+    "similarity": 0.37555555555555553,
+    "uncertainty": "The specific test case instructions for three regions (R(I10:P15), R(R10:AD15), and R(A16:H23)) appeared to contradict the general rules for seed identification and borrowing when applied to the input grid. For instance, R(R10:AD15) was monochromatic in the input but the instructions assigned it a seed. As instructed, I followed the specific test case instructions precisely, overriding the apparent inconsistencies. I also assumed that region boundaries like 'A16:H23' were meant to be exclusive of the wall in column H, defining the region as 'A16:G23'.",
+    "reasoning_content": null,
+    "has_ground_truth": true
+  }
+}

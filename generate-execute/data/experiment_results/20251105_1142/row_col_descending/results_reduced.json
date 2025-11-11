@@ -1,0 +1,104 @@
+{
+  "E0": {
+    "held_out_idx": 0,
+    "ascending": {
+      "similarity": 0.475,
+      "uncertainty": "The specific shapes for the '7' and '4' glyphs were not provided in the instructions. I have created plausible, recognizable, block-style glyphs that are scaled to fit their respective regions. The exact pixel-perfect shape is an assumption. Additionally, the instructions did not specify what to do with the small region at R10:T10; I assumed based on general instruction #3 that since it contained no 'objects', it should remain unchanged from the input.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.4725,
+      "uncertainty": "The instruction 'The red(2) dividing lines remain unchanged' was slightly ambiguous for the horizontal line at row 10, which was incomplete in the input (containing blue pixels). I interpreted this, in conjunction with the instruction 'partitioned by a... horizontal red(2) line', to mean that the entire logical dividing line in the relevant section (J10:T10) should be made solid red in the output. This assumes the 'partitioned by' instruction defines the ideal structure of the divider, overriding the incomplete source data.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.475
+  },
+  "E1": {
+    "held_out_idx": 1,
+    "ascending": {
+      "similarity": 0.5025,
+      "uncertainty": "The instructions specified drawing glyphs for the numbers '1' and '0' but did not provide the exact pixel art for these shapes. I had to assume reasonable, simple, and centered representations for them. For the '1' in region L1:T12, I used a simple vertical bar. For the '0' and nested '1' in region L14:T20, I used a hollow 5x3 rectangular shape for the '0' and a 3-pixel vertical bar for the '1' inside it.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.51,
+      "uncertainty": "The instructions specified that glyphs of numbers should be drawn, but did not provide the exact pixel-by-pixel shapes, sizes, or placement rules for these glyphs (e.g., for the '1' in region L1:T12 and the '0' and nested '1' in region L14:T20). I had to make assumptions about these details. I assumed the glyphs should be centered within their respective regions and used standard, simple pixel art representations for the numbers. I also assumed a reasonable size for the glyphs relative to the size of their containing region (e.g., a 5-pixel high '1' in a 12-pixel high region, and a 5x5 '0' in a 7x9 region).",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.51
+  },
+  "E2": {
+    "held_out_idx": 2,
+    "ascending": {
+      "similarity": 0.7230769230769231,
+      "uncertainty": "The instruction for the single-object case (Region H1:M10) was ambiguous. It stated 'The output is an orange(7) '7' glyph. The new background within the glyph's bounding box (H1:M7) is orange(7)'. If both the glyph and its background were orange(7), the glyph would be invisible. I assumed that the glyph itself should be drawn with the region's *original* background color (teal, 8) to make it visible against the new background (orange, 7).",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.7923076923076923,
+      "uncertainty": "",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.7923076923076923
+  },
+  "T0-bug-fix": {
+    "test_idx": 0,
+    "ascending": {
+      "similarity": 0.0,
+      "uncertainty": "I encountered several ambiguities while following the instructions. For region M1:T7, the meaning of 'containing a gray(5) '5' glyph' was unclear; I interpreted this as drawing the glyphs on top of each other (lowest value color first), though the visual result is not a clear composition. For region R9:T10, the specified coordinates did not seem to match the visual boundaries in the grid; I proceeded using the coordinates given in the instructions. Additionally, the shape of an 'H' glyph in a 3x2 space was not defined, so I assumed a plausible shape. For region G27:T30, a 5-pixel-high '4' glyph was instructed for a 4-pixel-high region; I assumed the glyph should be clipped to fit. The exact pixel shapes for all number glyphs were assumed based on common pixel art fonts.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.0,
+      "uncertainty": "1. Instruction 5 Region Coordinates: The instruction specified \"Region R9:T10\", which is a 3x2 area. However, the visual grid shows this is part of a larger region, approximately S8:W14, which contains the objects from the instruction. I assumed the instruction's coordinates were a typo or a hint, and performed the transformation on the larger, visually-defined region S8:W14. 2. Instruction 3 Nested Glyphs: The instruction for region M1:T7 specified a \"yellow(4) '4' glyph containing a gray(5) '5' glyph\". The meaning of \"containing\" was ambiguous. I interpreted this as drawing the '4' glyph first, then drawing the '5' glyph over it, with the pixels of the '5' glyph taking precedence. 3. Incomplete Instructions: The test case instructions list five regions to be transformed and state that \"Other regions with no objects... remain unchanged.\" This leaves ambiguity about what to do with regions that *do* have objects but are not mentioned in the instructions (e.g., the region at Y8:AD10 containing teal(8) objects). I assumed the list of transformations was exhaustive and that any region not explicitly mentioned in the instructions should remain unchanged, regardless of its contents.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.0,
+    "has_ground_truth": false
+  },
+  "T1-bug-fix": {
+    "test_idx": 1,
+    "ascending": {
+      "similarity": 0.0,
+      "uncertainty": "The instruction 'containing a ... glyph' is ambiguous regarding the size, placement, and interaction of the nested glyph. I have interpreted this to mean drawing the second glyph of the same standard 5x3 size and in the same centered position as the first glyph, overwriting the first glyph's pixels where they overlap.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.0,
+      "uncertainty": "The instructions for 'nested' glyphs (e.g., 'a red(2) '2' glyph containing a green(3) '3' glyph') were ambiguous. I assumed this meant drawing the first glyph (corresponding to the lower color value) centered in the region, and then drawing the second glyph (corresponding to the next color value) on top, also centered but with a one-pixel offset down and to the right. This creates a layered or shadowed effect. I also had to assume the pixel shapes of the number glyphs (2, 3, 4, 5), for which I used standard 3x5 pixel art representations.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.0,
+    "has_ground_truth": false
+  },
+  "T0": {
+    "test_idx": 0,
+    "ascending": {
+      "similarity": 0.21666666666666667,
+      "uncertainty": "I assumed standard block-like shapes for the number glyphs (e.g., 5x3) as they were not explicitly defined. The concept of a 'containing' glyph was interpreted as drawing one glyph on top of another in the same bounding box. The instruction for 'Region R9:T10' appeared to have a coordinate error, as column R is a boundary; I proceeded assuming the intended region was S9:T10.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.22444444444444445,
+      "uncertainty": "The instruction for region M1:T7 to create a glyph 'containing' another was ambiguous; I interpreted this as overlaying the second glyph on top of the first. The instruction for region R9:T10 required drawing an 'H' glyph in a 3x2 space, which is too small for a standard 3x3 'H'. I assumed a simplified 3x2 'H' glyph consisting of two vertical bars to resolve this.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.22444444444444445,
+    "has_ground_truth": true
+  },
+  "T1": {
+    "test_idx": 1,
+    "ascending": {
+      "similarity": 0.2311111111111111,
+      "uncertainty": "The instructions specify generating glyphs (e.g., '3' glyph) but do not define their pixel-level shapes, sizes, or precise placement within a region. I assumed standard block-letter shapes for the numbers (e.g., 5x5 pixels for primary glyphs, 3x3 for nested ones), and I centered them within their respective regions or bounding boxes. The term 'containing' for nested glyphs was interpreted as drawing the smaller glyph on top of and centered within the bounding box of the larger glyph.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.23333333333333334,
+      "uncertainty": "The instructions specified drawing glyphs (e.g., 'a green(3) '3' glyph') but did not provide the pixel shapes for these glyphs. I assumed a standard 3x5 pixel-art representation for each number. Additionally, for instructions like 'glyph A containing glyph B', I interpreted 'containing' to mean the two glyphs are drawn side-by-side with a single-pixel space between them, and the resulting group of glyphs is centered within the region. This interpretation was chosen because it was consistent across all specified regions, including those with limited space.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.23333333333333334,
+    "has_ground_truth": true
+  }
+}

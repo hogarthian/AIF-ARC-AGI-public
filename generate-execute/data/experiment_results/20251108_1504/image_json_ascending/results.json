@@ -1,0 +1,34 @@
+{
+  "E0": {
+    "held_out_idx": 0,
+    "similarity": 0.58,
+    "uncertainty": "The instructions were clear enough to solve the puzzle, but there were two minor points of ambiguity. First, the 'wall' in the test case was described as a 'T' shape, but it was actually a vertical line with two horizontal lines extending from it; this was a minor inaccuracy that was easily resolved by inspecting the grid data. Second, the coordinate ranges given for the regions (e.g., 'J11:T20') were simplified and did not account for the exact complex boundaries created by the wall. I had to determine the precise region boundaries by applying the general rule of finding 4-connected components of non-wall cells. In the end, the conclusions in the step-by-step instructions were correct, so these ambiguities did not prevent a successful transformation.",
+    "reasoning_content": null
+  },
+  "E1": {
+    "held_out_idx": 1,
+    "similarity": 0.74,
+    "uncertainty": "",
+    "reasoning_content": null
+  },
+  "E2": {
+    "held_out_idx": 2,
+    "similarity": 0.9076923076923077,
+    "uncertainty": "The general instructions state to identify all distinct regions partitioned by the wall. Following this rule would lead to identifying a fifth region at coordinates A7:F7. However, the specific instructions for the test case explicitly state that 'Four regions are identified' and provide instructions only for those four, omitting any mention of the cells at A7:F7. Based on the directive to 'Apply the test case instructions precisely', I assumed this omission was intentional and that the cells in the unmentioned region A7:F7 should remain unchanged from the input.",
+    "reasoning_content": null
+  },
+  "T0": {
+    "test_idx": 0,
+    "similarity": 0.41,
+    "uncertainty": "The instructions for the test case T0, step 3, provide seed lists for two regions that are inconsistent with the general rules and the input grid. For region R(A1:K25), the instructions specify seeds [1, 2, 4, 5], but scanning this region in the input grid only reveals seeds 1 and 2. For region R(M1:T7), the instructions specify seeds [4], but scanning this region reveals seeds 4 and 5. The instruction 'Apply the test case instructions precisely' was interpreted to mean that the provided (and seemingly incorrect) seed lists should be used. The output grid was generated based on this assumption.",
+    "reasoning_content": null,
+    "has_ground_truth": true
+  },
+  "T1": {
+    "test_idx": 1,
+    "similarity": 0.39222222222222225,
+    "uncertainty": "The provided test case instructions contained several points that contradicted the input grid data and the general hypothesis. I proceeded by following the instructions as precisely as possible, making the following assumptions: 1. The region boundaries specified in the instructions (e.g., 'A10:G15', 'A16:H23') were treated as correct, even though they do not always align with the 'wall' structure found in the input grid. This implies the existence of implicit, invisible boundaries. 2. The seed lists provided in the instructions (e.g., '[2]' for R(I1:AD8)) were used, even when a scan of the input grid revealed a different set of seeds (e.g., '[4,3,2]'). 3. The instruction to fill region R(R10:AD15) with seed '[2]' was followed literally, despite the region being monochromatic in the input and the seed's origin not fitting the established 'borrowing' rule. 4. The instruction for certain regions to 'remain unchanged' was interpreted as 'fill with the background color (8)', based on the pattern in the training examples. This was necessary because the specified regions actually contained seeds in the input grid, and leaving them would violate the overall spiral-fill aesthetic.",
+    "reasoning_content": null,
+    "has_ground_truth": true
+  }
+}

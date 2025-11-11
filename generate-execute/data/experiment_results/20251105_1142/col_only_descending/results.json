@@ -1,0 +1,104 @@
+{
+  "T0-bug-fix": {
+    "test_idx": 0,
+    "ascending": {
+      "similarity": 0.0,
+      "uncertainty": "The instruction 'tiling the relative pattern' was ambiguous. The examples suggested a complex fill operation for the interior of the shape. I interpreted this as a nearest-neighbor fill (creating a Voronoi diagram) based on the locations of the 'fill' seeds from the input grid. For tie-breaking when a cell is equidistant from multiple seeds, I assumed the seed that is top-most, then left-most in the input grid, takes precedence.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.0,
+      "uncertainty": "The instruction states the seed bounding box is A1:AD29, but the input data contains seeds in row 30 (e.g., at G30 and T30). This discrepancy did not alter the logic path, as the BBox is still not contained in the top-left quadrant. Assumed that 'tiling the relative pattern' for the interior fill means preserving the original coordinates of the non-border-color seeds within the newly bordered area.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.0,
+    "has_ground_truth": false
+  },
+  "T1-bug-fix": {
+    "test_idx": 1,
+    "ascending": {
+      "similarity": 0.0,
+      "uncertainty": "The instructions for the test case mention a 'tiled fill' for regions with multiple fill colors. The training examples suggest this could be a complex pattern. Lacking specific tiling rules, I made the simplifying assumption to fill the entire interior of the bordered rectangle with a single color, chosen as the one with the highest numerical index among the available fill colors. This assumption was applied consistently to all relevant regions.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.0,
+      "uncertainty": "The general instructions for drawing the output were ambiguous for cases with multiple seed colors. Based on the specific test case instructions and analysis of the examples, I made the following assumptions: 1) For a region with two seed colors, the one with the higher color index becomes the border and the other becomes a solid fill. 2) For a region with three seed colors, the one with the highest index is the border, and the other two form a tiled checkerboard fill. 3) For a region with five seed colors, the one with the highest index is the border, and the other four form a 2x2 tiled pattern, with colors in the tile ordered by their numerical index.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.0,
+    "has_ground_truth": false
+  },
+  "E0": {
+    "held_out_idx": 0,
+    "ascending": {
+      "similarity": 0.5675,
+      "uncertainty": "I encountered three main points of uncertainty. First, for Region 1, the instruction 'The output is a complex shape' was not specific. I assumed the shape should be a 'U', identical to the one in example E1, because the relative pattern of the seed pixels (at A1 and B2) was identical in both cases. Second, the instructions for Region 2 specified seed locations (P16, S19, T20) that were incorrect according to the provided input grid data (which has seeds at P11, S2, T1). I chose to follow the logic of the instructions but used the actual grid data, which fortunately led to the same conclusion about the bounding box location. Third, the instruction for Region 2's interior, 'tiled green/yellow interior', was ambiguous. A simple tiling of the fill seed pattern was not feasible. Based on observing the pattern in example E0, I formulated a 'nested border' hypothesis: the highest-value fill color (yellow) forms an inner border, and the remaining color (green) provides a solid fill for the center. I applied this interpretation to generate the output for Region 2.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.3025,
+      "uncertainty": "I encountered two main points of uncertainty. First, for Region 2, the instructions specified seed locations at P16, S19, and T20, which contradicts the input grid data showing seeds at P11, S2, and T1. As instructed, I precisely followed the written instructions for the seed locations, but this discrepancy is significant. Second, for Region 1, the instruction to create a 'complex shape' was ambiguous. I inferred that the intended shape was a 'U' that scales to the region's width, based on the strong similarity of the seed pattern (seeds at A1 and B2) to training example E1, which also produced a 'U' shape. This assumption was necessary to determine the final shape.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.5675
+  },
+  "E1": {
+    "held_out_idx": 1,
+    "ascending": {
+      "similarity": 0.4825,
+      "uncertainty": "I encountered three points of ambiguity while following the instructions. First, the instruction for T0 Region 2 specified a seed bounding box of 'L12:N16', which contradicts the input grid data where seeds establish a BBox of 'L1:N16'. I proceeded assuming the BBox was L1:N16. Second, the instruction for T0 Region 1 required drawing a 'complex E shape' without defining its specific dimensions or location; I interpreted this by creating a plausible, centered, 2-pixel-thick 'E' shape. Third, the instruction for T0 Region 2 called for an interior 'tiled with the gray/blue/black pattern' without specifying the tiling method. I assumed a simple sequential, row-by-row tiling of the colors {5, 1, 0} to fill the interior space.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.485,
+      "uncertainty": "I encountered several points of uncertainty where the specific instructions for the test case seemed to contradict either the input data or patterns observed in the training examples. I followed the test case instructions literally, as mandated by the experimental setup. The specific points are: 1. The instruction for Test T0, Region 2, stated the 'Seed BBox is L12:N16'. However, the input grid shows additional seeds at L1 and M2 which are outside this bounding box. I proceeded by ignoring these extra seeds and using only the ones within the specified BBox. 2. The instruction for T0, Region 2, defined the top-left quadrant as L1:P10. A consistent rule derived from all training examples (`floor(width/2)`) would define it as L1:O10. I used the specified L1:P10 for the check, noting that the outcome (BBox is outside the quadrant) remained the same. 3. The input grid for T0 contains a horizontal red line segment in Region 2 (from K13-T13). The instructions for T0 did not mention this line or its potential effect (e.g., subdividing the region, as seen in example E2). I treated Region 2 as a single, undivided region and assumed the red cells of this line were not part of the tiling pattern. 4. The instruction for T0, Region 1, specified the output should be 'a complex E shape' without giving exact dimensions. I inferred a plausible block 'E' shape that fits within the region with a 1-pixel margin, consistent with the style seen in training examples.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.485
+  },
+  "E2": {
+    "held_out_idx": 2,
+    "ascending": {
+      "similarity": 0.8,
+      "uncertainty": "The instructions specified the output for Region 1 should be a 'complex \"U\" shape'. Since the exact pixel dimensions and geometry of this 'U' were not provided, I had to make an assumption. I created a U-shape that fills the 6-column width of the region, is 9 rows tall, has a 1-pixel brown (9) border on the sides and bottom, is filled with blue (1), and has an open top row filled with the background color teal (8).",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.8769230769230769,
+      "uncertainty": "The instruction to create a \"complex 'U' shape\" was followed by interpreting it as a blocky 'U' that fills its entire region, with the specified border and fill colors. This interpretation is based on the directive's specificity, though the exact pixel pattern was not detailed. Additionally, the test instructions did not specify how to handle the region from H8:M10. I assumed based on the general instructions that since this region contained no 'seed' pixels, it should remain unchanged.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.8769230769230769
+  },
+  "T0": {
+    "test_idx": 0,
+    "ascending": {
+      "similarity": 0.03222222222222222,
+      "uncertainty": "The test case instructions state that 'The seed BBox is A1:AD29.' However, the provided test input grid contains non-background colors in row 30 (e.g., at G30 and T30), meaning the actual BBox of all seeds is A1:AD30. This discrepancy did not affect the final outcome, as both a BBox ending at row 29 and one ending at row 30 are outside the top-left quadrant (A1:O15), leading to the same rule application. I proceeded by following the described logic.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.027777777777777776,
+      "uncertainty": "",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.03222222222222222,
+    "has_ground_truth": true
+  },
+  "T1": {
+    "test_idx": 1,
+    "ascending": {
+      "similarity": 0.23,
+      "uncertainty": "",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.21777777777777776,
+      "uncertainty": "",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.23,
+    "has_ground_truth": true
+  }
+}

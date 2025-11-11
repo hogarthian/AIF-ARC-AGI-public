@@ -1,0 +1,34 @@
+{
+  "E0": {
+    "held_out_idx": 0,
+    "similarity": 0.9525,
+    "uncertainty": "The instructions for T0 describe regions like 'J11:T15' which are internally divided by a separator line (at column Q). The instruction says to flood-fill this entire region with a single color based on a seed in one of its sub-regions. I interpreted this to mean that the fill rule applies to the entire bounding box described, and the internal separator is ignored for determining the fill rule for the whole area, but is still drawn in the final output. This assumption was necessary to resolve the ambiguity of how to handle the seedless sub-region (R11:T15) that was part of the larger, seeded conceptual region (J11:T15).",
+    "reasoning_content": null
+  },
+  "E1": {
+    "held_out_idx": 1,
+    "similarity": 0.5,
+    "uncertainty": "The instructions for the test case (T0, steps 3d and 4d) mention a 'region on the separator line'. This was ambiguous because the general instructions state that regions are composed of non-separator colors. The separator itself is a solid red (color 2) line/cross shape. I assumed this instruction was intended for hypothetical non-separator cells embedded within the separator structure, and since none existed in this test case, the instruction had no effect. Consequently, I left the separator cells (color 2) unchanged in the output, which seemed the most logical interpretation consistent with the overall pattern.",
+    "reasoning_content": null
+  },
+  "E2": {
+    "held_out_idx": 2,
+    "similarity": 1.0,
+    "uncertainty": "The test case instructions state that the separator partitions the grid into 'four regions', but visually and topologically there are only three distinct regions of non-separator colors. I proceeded assuming three regions. The instructions also mention a fourth, non-existent region 'on the separator line at row 7'. I ignored this instruction as it seemed to be an error, and its prescribed action (filling with the background color) would have no effect on the grid anyway.",
+    "reasoning_content": null
+  },
+  "T0": {
+    "test_idx": 0,
+    "similarity": 0.5088888888888888,
+    "uncertainty": "The test case instructions for T0 contain a contradiction with the general rules and the input grid's structure. Instructions d and e state that the cells R9 (row 8, col 17) and T10 (row 9, col 19) are in separate, single-seed regions. However, a 4-connectivity analysis of the input grid shows they belong to the same large 'H-shaped' region, which contains two seeds in total: 4 and 1. The general rules state that regions are 'maximal 4-connected' and that regions with two or more seeds should be filled with a spiral. To resolve this conflict, I chose to follow the general rules, as applying the specific instructions literally was impossible (e.g., flood-filling the same region with two different colors). I identified the single large H-shaped region, determined its seed list to be [4, 1] based on row-major scan order, and applied the spiral fill rule for multi-seed regions. All other regions were processed as per the instructions, which were consistent for those areas.",
+    "reasoning_content": null,
+    "has_ground_truth": true
+  },
+  "T1": {
+    "test_idx": 1,
+    "similarity": 0.5511111111111111,
+    "uncertainty": "The test case instructions contained what appear to be typos regarding region definitions. Specifically: 1. Instruction 2.e stated 'Region containing A17' but listed seeds at coordinates (I17, J18, K19) which are in a different region separated by a separator line. I assumed the instruction meant the region containing the listed seeds, i.e., 'Region containing I17'. 2. Instruction 2.f stated 'Region containing I25' but listed seeds at coordinates (W25, X26) which are in a different region. I assumed the instruction meant the region containing those seeds, i.e., 'Region containing W25'. My solution is based on these assumptions.",
+    "reasoning_content": null,
+    "has_ground_truth": true
+  }
+}

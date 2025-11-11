@@ -1,0 +1,104 @@
+{
+  "T0-bug-fix": {
+    "test_idx": 0,
+    "ascending": {
+      "similarity": 0.0,
+      "uncertainty": "The test case instructions contained several discrepancies with the provided input grid. Instruction 5 specified a 'Blue(1) at B2', but the grid contains a Red(2) at that location. Instruction 10 mentioned a non-existent seed 'Blue(1) at M25' and incorrectly placed seed 'I28' in a region with it. I resolved these ambiguities by strictly following the general transformation rules and using the actual seed data and locations from the input grid, assuming the test instructions were illustrative but contained errors.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.0,
+      "uncertainty": "The specific test case instructions contained several discrepancies with the input grid data. Instruction #5 stated the seed at B2 was Blue(1), but it is Red(2). Instruction #10 referred to a seed at M25, but M25 is a boundary cell (Teal, 8). I proceeded by trusting the grid data over the conflicting instructions. Additionally, the instructions did not specify how to handle regions with no seeds; I assumed these regions should remain unchanged, filled with their original background color.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.0,
+    "has_ground_truth": false
+  },
+  "T1-bug-fix": {
+    "test_idx": 1,
+    "ascending": {
+      "similarity": 0.0,
+      "uncertainty": "The instructions for the test case separate the seeds K6, J7, and I8 into two different groups (a 'single-seed region' for K6, and a combined region for J7/I8), even though they appear to be in the same contiguous area in the input grid. I resolved this ambiguity by assuming that for any background cell in their shared area, I should first determine which group it is closest to. If it's closest to K6, it takes K6's color. If it's closer to the {J7, I8} group, the fill color is then determined by the rules for that subgroup (i.e., comparing distance to J7 vs. I8). For ties between the groups (e.g., a cell equidistant to K6 and the closest of {J7, I8}), I assumed the seed that comes first in a global row-major scan (K6) wins the tie.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.0,
+      "uncertainty": "The test case instructions listed seeds in groups (e.g., '{J7, I8}' and 'single-seed regions' for K6), which initially suggested these groups should be processed independently. However, visually, seeds K6, J7, and I8 are all in the same contiguous background area. I assumed that the instructions were merely listing seeds for convenience and that all seeds within a single contiguous area (defined by the blue boundaries) should be considered together for the fill calculation. I also assumed that any contiguous region with no seeds should remain unchanged.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.0,
+    "has_ground_truth": false
+  },
+  "E0": {
+    "held_out_idx": 0,
+    "ascending": {
+      "similarity": 0.46,
+      "uncertainty": "There were several inconsistencies between the specific test instructions, the input grid JSON, and the input grid image. 1) The instructions for Region 1 mention a seed at C2, but the grid data (JSON and image) shows it at B2. I followed the grid data. 2) The instructions for Region 2 mention only one seed (S2), but the General Instructions state to identify all non-background cells as seeds. The grid data shows a second seed at T1, which I included in my calculations based on the general rule. 3) The instructions for Region 4 mention a seed at Q11, but the provided JSON data shows the seed at P11 and a boundary cell at Q11. I followed the JSON data for the seed position, assuming the specific instruction was incorrect. 4) The instructions state there are four regions, but following the 'contiguous area' rule from the general instructions leads to at least five distinct blue regions. I proceeded by processing each contiguous region independently, assuming 'four regions' was a simplification.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.46,
+      "uncertainty": "The specific instructions for the test case contained several discrepancies with the provided input grid data. Specifically: 1) In the top-left region, the instructions listed a Teal seed at C2, but the input grid has it at B2. 2) In the top-right region, the instructions mentioned only a Yellow seed at S2, but the input grid also contains a Teal seed at T1. 3) In the bottom-right region, the instructions listed a Green seed at Q11, which is a boundary cell, while the input grid shows the seed at P11. I resolved these conflicts by assuming the input grid data is correct and the specific instructions contained typos. I therefore proceeded by applying the general instructions and working hypothesis to the seeds as found in the input grid (A1/B2 for top-left, T1/S2 for top-right, P11 for bottom-right).",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.46
+  },
+  "E1": {
+    "held_out_idx": 1,
+    "ascending": {
+      "similarity": 0.5175,
+      "uncertainty": "The specific instructions for the test case contained significant discrepancies with the provided input grid data, particularly for Region 2 (top-right) and Region 4 (bottom-right). For example, the instructions specified background colors and seed locations/colors that did not match the input grid. I made the assumption that the specific instructions define the correct parameters for the transformation algorithm, and these parameters should be used even if they contradict the input grid's initial state. Based on this assumption, I followed the general algorithm (filling regions based on Manhattan distance to seeds) using the parameters (seed locations, colors) provided in the specific test case instructions, overwriting the original content of those regions.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.5225,
+      "uncertainty": "The specific instructions for Test T0 contained several inconsistencies when compared to the input grid and the general instructions.\n1. For Region 2 (top-right), the instruction identified the background as blue(1) and the seed as Teal(8) at M2. However, the input grid's background is yellow(4), and the seeds are Teal(8) at L1 and Blue(1) at M2. I proceeded by applying the general instructions to this region, assuming the specific instruction was erroneous.\n2. For Region 4 (bottom-right), the instruction identified the background as gray(5) and listed seeds at \"O15\" and \"N16\". The input grid's background is mostly yellow(4), and the black seed is at M15, not O15. I assumed the specific instruction's explicit seed list ([M15, N16]) was intended to override the general seed identification rule (which would have also included L14) and that \"O15\" was a typo for \"M15\". I confirmed this assumption by verifying the example calculation for cell N15, which only works with the seed at M15. I then treated all other cells in the region (both yellow and gray) as background to be filled according to these two seeds.\nThis approach of correcting and selectively interpreting the specific instructions was necessary to resolve multiple contradictions.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.5225
+  },
+  "E2": {
+    "held_out_idx": 2,
+    "ascending": {
+      "similarity": 0.36153846153846153,
+      "uncertainty": "The provided 'Test Case Instructions' for T0 were in significant conflict with the actual 'Test Input 0' grid data. I proceeded by strictly following the test case instructions as direct commands, overriding the input grid data where necessary. Key discrepancies included:\n1. In Region 1 (top-left), the instruction specified a Red(2) seed at A1, whereas the input grid had a Brown(9) seed. I used Red(2) for the calculation as instructed.\n2. In Region 2 (top-right), the instruction stated 'No seeds. The region remains unchanged.' This contradicted the input grid which contains an Orange(7) seed at M1. I followed the instruction to leave the region unchanged.\n3. In Region 3 (bottom-left), the instruction listed four seeds with specific colors at coordinates (I7, J7, L7, M7) that are located outside the region and are part of the magenta boundary line in the input grid. I assumed these external, specified seeds were to be used for the Voronoi fill calculation for this region, as per the instruction.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.24615384615384617,
+      "uncertainty": "The test case instructions were highly contradictory, both internally and with the provided input grid. To generate a solution, I had to make the following assumptions: (1) I assumed a typo in the instructions, swapping the target regions for steps 5 and 6. This was necessary to make sense of the specific example given (cell K8). Specifically, I assumed step 5 applied to the bottom-right region and step 6 to the bottom-left. (2) I used the seed colors specified in the instructions, overriding the colors present in the input grid. (3) I used seed locations specified in the instructions, even when they were on boundary lines, which contradicts the general instructions. (4) I assumed that any geometric region not explicitly mentioned in the instructions should remain unchanged.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.36153846153846153
+  },
+  "T0": {
+    "test_idx": 0,
+    "ascending": {
+      "similarity": 0.4711111111111111,
+      "uncertainty": "The step-by-step instructions for the test case contained some discrepancies with the provided grid data regarding seed colors and locations (e.g., mentioning a seed at M25, which is a background cell, or stating B2 is blue when it is red). I resolved this by strictly following the general instructions and working hypothesis, applying them to the actual grid data.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.45444444444444443,
+      "uncertainty": "The specific instructions for the test case contained some discrepancies with the provided input grid. Instruction 5 stated 'Region with seed Blue(1) at B2', but B2 contains a Red(2) seed, and the Blue(1) seed is at A1; both are in the same region. Instruction 10 mentioned a region with two seeds, 'Yellow(4) at I28 and Blue(1) at M25', but the grid only contains the yellow seed at I28 in that region, and M25 is not a valid coordinate. I proceeded by following the more general rules and the actual grid data, assuming these specific instructions were erroneous simplifications.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.4711111111111111,
+    "has_ground_truth": true
+  },
+  "T1": {
+    "test_idx": 1,
+    "ascending": {
+      "similarity": 0.35888888888888887,
+      "uncertainty": "The instructions provided specific groupings of 'seed' cells for different regions. These groupings contradicted a simple visual analysis of the grid, where some seeds treated as being in separate regions by the instructions appeared to be in the same contiguous background area (e.g., K6 vs. J7/I8, and the multiple seed groups in the large central area). I resolved this ambiguity by assuming the instructional groupings were paramount. I implemented a two-stage nearest-neighbor logic: first, a background cell is assigned to the 'region' of its globally closest seed (using row-major scan for ties); second, its color is determined by its closest seed *within that assigned region* (again, using row-major scan for ties). This approach strictly follows the provided groupings while logically partitioning the entire grid.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.31444444444444447,
+      "uncertainty": "The instructions for test case T1, step 5, list the seeds for a region as 'Green(3) at J7 and Red(2) at I8'. However, the cell K6 in the same contiguous region contains a Yellow(4) seed. Following the general instructions, which state that all non-background cells in a region are seeds, I included K6 in the seed list for that region. The ordered seed list for this region was therefore [K6, J7, I8].",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.35888888888888887,
+    "has_ground_truth": true
+  }
+}

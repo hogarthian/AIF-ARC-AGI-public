@@ -1,0 +1,104 @@
+{
+  "T0-bug-fix": {
+    "test_idx": 0,
+    "ascending": {
+      "similarity": 0.0,
+      "uncertainty": "The instructions for Test T0 state that the bottom hole of the 'B' shape contains seed T10. However, in the provided input grid, pixel T10 is located inside the top hole of the 'B'. I proceeded by following the consequence of the instruction\u2014filling the bottom hole with the color of seed T10 (blue, 1)\u2014while noting this discrepancy between the instruction's text and the grid data.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.0,
+      "uncertainty": "The instructions state that the bottom hole of the 'B' shape contains seed T10, which has the color blue (1). However, inspecting the input grid shows that pixel T10 is located in the top hole of the 'B'. I followed the instruction to fill the bottom hole with blue (1) despite this apparent contradiction, assuming the color-to-hole mapping in the instruction was the intended logic.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.0,
+    "has_ground_truth": false
+  },
+  "T1-bug-fix": {
+    "test_idx": 1,
+    "ascending": {
+      "similarity": 0.0,
+      "uncertainty": "The provided instructions were labeled 'Test T1' but were applied to the grid labeled 'Test Input 0'; I assumed this was intentional. The exact pixel shapes of the letters 'S' and 'R' were not specified in the instructions. I assumed a standard, centered, block-letter style that fits within the designated panels and is drawn around any internal barriers. For the 'S' letters, the method of applying multiple seed colors was not explicit; I assumed the top part of the letter would be colored with the first seed from the top region, and the bottom part with the first seed from the bottom region.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.0,
+      "uncertainty": "The working hypothesis incorrectly stated that the test input (T0) has no separator, while the grid data clearly shows blue separator lines. I proceeded by assuming this was an error in the hypothesis and applied the 'Mode A' (separator present) logic. The exact pixel shapes for the letters had to be inferred, as they were not specified; I used standard, centered block letter forms scaled to fit each region.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.0,
+    "has_ground_truth": false
+  },
+  "E0": {
+    "held_out_idx": 0,
+    "ascending": {
+      "similarity": 0.15,
+      "uncertainty": "The instructions did not specify the exact pixel art for the letters 'A' and 'R'. I assumed a standard, centered, blocky representation that fits reasonably within the specified panels, based on the instruction to draw the letter 'scaled to fit'. The exact dimensions, stroke width, and position of the letters are therefore my best guess.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.1925,
+      "uncertainty": "The exact pixel-art for the letters 'A' and 'R' was not specified in the instructions, which only state to 'draw that letter, scaled to fit'. I had to assume a reasonable, blocky, centered representation for each letter that fits within its designated panel and respects the color assignments for its parts. The final shapes were chosen to be consistent with all provided constraints, including the horizontal division of the right panel for the 'R'.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.1925
+  },
+  "E1": {
+    "held_out_idx": 1,
+    "ascending": {
+      "similarity": 0.4675,
+      "uncertainty": "The specific instructions for Test T0 stated that the right panel should contain the letter 'S', based on a combination of 5 seeds from the top and bottom halves. However, the input grid contains a horizontal red line at row 13, which, according to the general instructions ('any other lines of the same color are also preserved as barriers'), divides the right panel into two separate sub-panels. Following the general instructions, these two sub-panels should be processed independently. The top sub-panel has 2 seeds (mapping to 'A') and the bottom has 3 seeds (mapping to 'R'). I chose to follow the general instructions and the visual evidence of the barrier, as this provided a more consistent and unambiguous interpretation of the rules. I therefore drew an 'A' and an 'R' instead of an 'S'. Additionally, the specific instructions provided slightly incorrect coordinates for the seeds, which I corrected by referring to the input grid data. The exact pixel-level shape of the letters 'C', 'A', and 'R' was not specified, so I created standard block-letter representations.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.24,
+      "uncertainty": "The instructions for drawing the 'S' required interpretation for the terms 'outer', 'inner', and 'other part'. I assumed these corresponded to different strokes and enclosed areas of a blocky, pixelated 'S'. Specifically, I mapped 'outer' to the main strokes forming the curves, 'inner' to the hollow spaces within the curves, and 'other part' to the middle horizontal stroke of the 'S'. The exact pixel dimensions, thickness, and positioning of the letters 'C' and 'S' were not specified, so I assumed they should be centered in their respective panels with a small margin and drawn with a consistent 2-pixel thickness.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.4675
+  },
+  "E2": {
+    "held_out_idx": 2,
+    "ascending": {
+      "similarity": 0.46153846153846156,
+      "uncertainty": "The test case instructions specify which letters to draw ('A', 'I') and how to color them, but not their exact pixel-by-pixel shapes. I had to assume a standard, centered, block-letter representation for each letter, scaled to fit its respective panel (10 rows by 6 columns). The specific shapes I chose for 'A' and 'I' are my best interpretation of this requirement.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.3230769230769231,
+      "uncertainty": "The instructions state to 'draw' letters like 'A' and 'I' within the defined panels. However, the exact pixel-by-pixel shape, size, and placement of these letters are not specified. I assumed the letters should be drawn as recognizable, centered, block-style characters that reasonably fill the panel's space. For the 6x10 panels, I chose an 8-row high 'A' (4 pixels wide) and 'I' (2 pixels wide).",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.46153846153846156
+  },
+  "T0": {
+    "test_idx": 0,
+    "ascending": {
+      "similarity": 0.33555555555555555,
+      "uncertainty": "The instructions for Test T0 state that the teal shape at R8:X15 is a 'B' with two holes ('top' and 'bottom'). However, the input grid shows this shape as a single, undivided rectangle. To resolve this contradiction while following the instructions, I made an assumption about how to partition the single hole. Since the instructions link seed S9 (in row 9) to the 'top hole' and seed T10 (in row 10) to the 'bottom hole', I assumed the partition is a horizontal line between row 9 and row 10. Consequently, I defined the 'top hole' as the interior of the shape within row 9, and the 'bottom hole' as the interior of the shape spanning rows 10 to 14.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.33555555555555555,
+      "uncertainty": "The instructions refer to an 'O' shape at approx. G26:T30, but the input grid shows a 'U' shape (open at the bottom). I proceeded by treating the area enclosed by the three sides of the 'U' as the 'hole' to be filled, as this seemed the most logical interpretation of the instructions.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.33555555555555555,
+    "has_ground_truth": true
+  },
+  "T1": {
+    "test_idx": 1,
+    "ascending": {
+      "similarity": 0.15222222222222223,
+      "uncertainty": "The instructions were mostly clear, but required making several assumptions to complete the drawing. 1. Seed Discrepancy: The instruction for the top-right panel (I1:AD15) stated there were 3 seeds, but the input grid clearly shows 5 seeds in that region. I proceeded by following the instruction precisely and ignoring the two extra seeds (K6 and J7), assuming an unstated filtering rule. 2. 'S' Letter Seed Distribution: The hypothesis suggested an 'S' corresponds to a 2/3 seed split between sub-panels. The bottom-right panel had a 3/2 split, but the instruction still mandated drawing an 'S'. I followed the instruction, suggesting the hypothesis is a guideline rather than a strict rule. 3. Letter Geometry and Coloring: The instructions did not specify the exact size, placement, or style of the letters to be drawn, nor the precise method for applying multiple colors to the parts of a single letter (like the 5-colored 'S'). I assumed the letters should be standard, centered, block-style shapes. For coloring, I devised a plausible mapping where different strokes of the letter 'S' correspond to the seed colors in positional order, and for the 'R', the colors mapped to the body, hole, and leg.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.11666666666666667,
+      "uncertainty": "The exact pixel-by-pixel shapes of the letters 'S' and 'R' are not specified in the instructions. I have inferred plausible, scaled, block-letter shapes that fit within the specified panels and used the provided coloring rules. The interpretation of how letter drawing interacts with pre-existing 'barrier' lines (i.e., drawing overwrites barriers) is also an inference based on the specific wording of the test case instructions, which appears to take precedence over the general rules.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.15222222222222223,
+    "has_ground_truth": true
+  }
+}

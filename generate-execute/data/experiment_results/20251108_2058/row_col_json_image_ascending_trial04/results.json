@@ -1,0 +1,34 @@
+{
+  "E0": {
+    "held_out_idx": 0,
+    "similarity": 0.63,
+    "uncertainty": "",
+    "reasoning_content": null
+  },
+  "E1": {
+    "held_out_idx": 1,
+    "similarity": 0.7025,
+    "uncertainty": "The working hypothesis and general instructions for generating spiral patterns (using Chebyshev distance) and filling inherited regions do not perfectly match the provided training example outputs. For instance, in example E0, the instructions imply the bottom-left inherited region should be a solid color, but the output shows a complex pattern. Similarly, the spiral pattern in the top-left region of E0 does not strictly follow the provided Chebyshev distance formula. However, the task is to 'Apply the test case instructions precisely'. Therefore, I have followed the instructions for test case T0 literally, using the specified Chebyshev method for generating spirals. The instructions for T0 also did not specify what to do with the background-colored cells in the region A13:J13 (row 12, columns 0-9). Based on the quadrant logic derived from the examples, this area is not part of the four main regions. As it was not mentioned, I assumed it should remain unchanged from the input.",
+    "reasoning_content": null
+  },
+  "E2": {
+    "held_out_idx": 2,
+    "similarity": 0.9076923076923077,
+    "uncertainty": "The 'General Instructions' define regions as maximal 4-connected components of the background color. For the test case, this would result in three regions, as the background cells at A7:F7 connect the top-left and bottom-left areas. However, the specific 'Test Case Instructions' partition the grid into four distinct regions (e.g., 'Top-Left (A1:F6)' and 'Bottom-Left (A8:F10)' are treated as separate). I followed the more specific test instructions. This created an ambiguity for the background cells at A7:F7, which are not mentioned in any of the four regions to be processed. I assumed these cells should remain unchanged, consistent with the behavior of the Bottom-Right region where the transformation was also skipped.",
+    "reasoning_content": null
+  },
+  "T0": {
+    "test_idx": 0,
+    "similarity": 0.5033333333333333,
+    "uncertainty": "When a no-seed region had multiple adjacent source regions in the same priority direction (e.g., two 'Above' neighbors), I assumed a tie-breaker rule of selecting the one whose contact points are further to the left. The test instructions also contained a minor typo ('seed at V2' instead of 'V1'), which I resolved by checking the input grid.",
+    "reasoning_content": null,
+    "has_ground_truth": true
+  },
+  "T1": {
+    "test_idx": 1,
+    "similarity": 0.38,
+    "uncertainty": "The test case instructions contained two discrepancies with the general rules and the input grid. 1. For the Top-Left region (A1:G8), the instruction specified a seed list of `[3, 4]`, but the general rule of row-major scanning of the input grid yields `[4, 3]`. I followed the general rule. 2. For the Bottom-Left region (A10:G30), the instruction listed seeds (I17, J18, K19) and a corresponding seed list that were outside the region's boundaries. I ignored this erroneous information and derived the seed list `[6, 5, 4]` from the actual seeds found within the region's boundaries.",
+    "reasoning_content": null,
+    "has_ground_truth": true
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "E0": {
+    "held_out_idx": 0,
+    "similarity": 0.78,
+    "uncertainty": "The specific instructions for the test case define four rectangular regions (TL, TR, BL, BR). However, the actual non-divider cells in the input grid do not perfectly align with these simple rectangles due to a complex 'divider' shape. For example, some non-divider cells like R10, S10, T10 fall outside any of the defined rectangular regions. Also, the BR region contains part of the divider line within its specified rectangle. I have assumed that the instructions intend for the transformation to apply *only* to the non-divider cells *within* the specified rectangular bounding boxes. Any non-divider cells outside these boxes are assumed to remain unchanged. For regions containing divider cells (like BR), I assumed those divider cells are also unchanged, and the fill operation applies only to the other cells in the specified box.",
+    "reasoning_content": null
+  },
+  "E1": {
+    "held_out_idx": 1,
+    "similarity": 0.7,
+    "uncertainty": "The test case instructions state that the divider creates four regions (TL, TR, BL, BR). However, based on the working hypothesis's definition of a region as a 4-connected component of non-divider cells, the test input's divider shape actually creates only three regions, with TL and BL forming a single connected component. Despite this discrepancy in the description, the specified filling actions (filling TL with its own pattern and BL by inheriting that same pattern) lead to the same unambiguous final state as treating TL and BL as a single large region. I proceeded by implementing the outcome described by the instructions.",
+    "reasoning_content": null
+  },
+  "E2": {
+    "held_out_idx": 2,
+    "similarity": 1.0,
+    "uncertainty": "",
+    "reasoning_content": null
+  },
+  "T0": {
+    "test_idx": 0,
+    "similarity": 0.3333333333333333,
+    "uncertainty": "",
+    "reasoning_content": null,
+    "has_ground_truth": true
+  },
+  "T1": {
+    "test_idx": 1,
+    "similarity": 0.35333333333333333,
+    "uncertainty": "",
+    "reasoning_content": null,
+    "has_ground_truth": true
+  }
+}

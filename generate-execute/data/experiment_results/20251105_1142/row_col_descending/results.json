@@ -1,0 +1,104 @@
+{
+  "E0": {
+    "held_out_idx": 0,
+    "ascending": {
+      "similarity": 0.4925,
+      "uncertainty": "The instructions for handling single-object regions are contradictory. For E1 (orange object), the instruction and output agree that the object's color is used for both the glyph and new background. For E0 (green object), the instruction says 'green glyph on green background', but the visual output clearly shows a yellow glyph (old background color) on a green background (object color). The instruction for T0's green object region mirrors the contradictory instruction from E0. I have assumed the visual pattern from E0 is the correct one to follow for T0's green object, resulting in a blue glyph (old background) on a green background (object color). This seems to be a special case for the green(3) object.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.4575,
+      "uncertainty": "The instructions were followed, but required making some assumptions. 1. The specific pixel shapes of the '7' and '4' glyphs were not defined in the instructions or examples, so they were designed based on the blocky, pixel-art style observed in the training examples. 2. The written instructions for handling single-object regions were contradictory across the provided examples (E0 vs E1). I followed the visual evidence from E0, which suggested that for single-object regions, the inner area is filled with the new color, while a 1-pixel border of the region retains its original background color. This rule was applied to region J11:T20. 3. The horizontal red dividing line in the input grid at row 10 did not span the full width of the right-hand side of the grid. To create the clean rectangular partitions described in the instructions (J1:T9 and J11:T20), I assumed the line should be extended to the grid's edge (column T).",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.4925
+  },
+  "E1": {
+    "held_out_idx": 1,
+    "ascending": {
+      "similarity": 0.5725,
+      "uncertainty": "I had three main points of uncertainty. First, for the region A1:J20, the instruction specified a '3' glyph on a background of the same color. This results in a solid-colored region, making the glyph's shape irrelevant. I followed this literal instruction, filling the region completely with green(3). Second, for the '1' glyph in region L1:T12, there was no example of a '1' glyph in a wide region to reference for its exact shape, scaling, or alignment. I assumed a simple, centered, two-pixel-wide vertical bar as a reasonable representation. Third, for the nested glyph in region L14:T20, the general rule stated that an object with value 1 in a region of width <= 6 (in this case, width 5) should produce an 'H' glyph. However, the specific test instruction explicitly called for a '1' glyph. I prioritized the specific test instruction over the general rule and drew a '1'.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.5225,
+      "uncertainty": "Uncertainty arose from the instruction for a 'nested glyph', which had no corresponding training example. I assumed the nested '1' should be a simplified vertical line drawn inside the '0' glyph's hole. The shape for the '0' glyph itself was also an assumption (a 3x5 block shape), as it was not in the examples. Additionally, there was a contradiction in the rules for single-object backgrounds (fill entire region vs. fill glyph bounding box); I followed the specific test case instruction to fill the entire region.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.5725
+  },
+  "E2": {
+    "held_out_idx": 2,
+    "ascending": {
+      "similarity": 0.7923076923076923,
+      "uncertainty": "The instructions for the test case contained several contradictions, requiring assumptions to resolve. 1. Glyph Shape: The shape for the 'H' glyph in region A1:F10 was not specified, so a standard, centered 3x5 pixel 'H' was assumed. 2. Single-Object Rule: The instruction for region H1:M10 specified an orange(7) glyph on an orange(7) background. This would render the glyph invisible. The training examples were also inconsistent on this rule (E0 output was a solid rectangle, while E1 was a filled glyph). I assumed the instruction implies filling the entire bounding box (H1:M7) with a solid orange(7) color, consistent with the E0 output, even though the instruction mentioned a '7' glyph. 3. Separator Integrity: The instruction for region H1:M10 specified a bounding box (H1:M7) that overlaps with a part of the magenta(6) separator line (H7:M7). This contradicts the general rule that separators remain unchanged. I assumed the specific instruction to fill the bounding box takes precedence, and thus overwrites that part of the separator line.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.9076923076923077,
+      "uncertainty": "The instructions for Test T0 presented a conflict. Step 3 stated that the bounding box for the orange '7' glyph was H1:M7, which would be filled with orange. However, Step 4 stated that the magenta(6) dividing line remains unchanged, and the input grid shows a magenta line across row 7 (from column G onwards). Filling H1:M7 with orange would overwrite this part of the line. I assumed that the rule 'the dividing line remains unchanged' has higher precedence. Therefore, I treated the magenta 'L' shape as the full partition, creating two separate regions to the right: H1:M6 and H8:M10. I then applied the single-object rule to region H1:M6 (filling it with orange) and the no-object rule to H8:M10 (leaving it unchanged), which resolved the conflict.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.9076923076923077
+  },
+  "T0-bug-fix": {
+    "test_idx": 0,
+    "ascending": {
+      "similarity": 0.0,
+      "uncertainty": "The instruction for region M1:T7, \"a yellow(4) '4' glyph containing a gray(5) '5' glyph\", was ambiguous. The '4' glyph pattern learned from the training examples is not a container shape and does not have a large enough enclosed space for another glyph. I proceeded by drawing only the primary '4' glyph and omitting the '5' glyph. The shapes and bounding boxes for the '2' glyph (in V1:AD7) and the '4' glyph (in G27:T30) were not available in examples and had to be assumed based on the available space and the style of other glyphs. Specifically, the '4' had to be significantly squashed to fit the region's aspect ratio. Lastly, instruction 5 defined a region `R9:T10` which is not bounded by the partitioning lines identified in the hypothesis; I followed this instruction literally, which contradicts the general rule of how regions are defined.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.0,
+      "uncertainty": "The instruction for region M1:T7 specified a '4' glyph containing a '5' glyph. As a '4' has no enclosed area to contain another shape, and examples only show nesting within shapes like '0', I assumed the intermediate color/glyph ('5') should be ignored. I proceeded by drawing the glyph of the lowest color value on a background of the highest color value. I also assumed simple, blocky, filled glyph shapes consistent with the examples, as their exact pixel art was not defined.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.0,
+    "has_ground_truth": false
+  },
+  "T1-bug-fix": {
+    "test_idx": 1,
+    "ascending": {
+      "similarity": 0.0,
+      "uncertainty": "The instructions mention creating 'nested' glyphs, such as a '2 containing a 3'. In the examples, this occurs with a '0 containing a 1', where the '1' fits neatly into the hole of the '0'. For glyphs without holes, like '2', '3', '4', and '5', the interpretation is ambiguous. I have assumed this means the second glyph is drawn directly on top of the first glyph. Additionally, the exact pixel-level shapes of the number glyphs are not specified, so I have created standard, centered, block-style representations based on the style seen in the examples.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.0,
+      "uncertainty": "The instruction for nested glyphs, such as \"a red(2) '2' glyph containing a green(3) '3' glyph\", was highly ambiguous. The example E1 shows a '0' outline being filled with a '1' pattern, which implies a nesting model where the outer glyph is an outline and the inner glyph pattern fills its hole. However, it was not possible to create standard glyphs for '2' and '4' that had large enough holes to contain other glyphs like '3' and '5'. To resolve this, I made the assumption that 'containing' meant simple layering or overlaying of filled glyph shapes, where the glyph with the higher color value is drawn on top of the glyph with the lower color value. This is a significant assumption as the visual result does not strongly resemble 'containment'.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.0,
+    "has_ground_truth": false
+  },
+  "T0": {
+    "test_idx": 0,
+    "ascending": {
+      "similarity": 0.20555555555555555,
+      "uncertainty": "The instructions for two regions required making assumptions. For region R9:T10, the specified region size (3x2) was too small to draw the instructed 'H' glyph. I assumed the glyph should be clipped, showing only the 2 middle rows of a standard 5-high 'H' glyph. For region M1:T7, the instruction was to draw a '4' glyph 'containing' a '5' glyph. Since a '4' has no natural enclosed space, I assumed this meant overlaying the '5' glyph on top of the '4' glyph, with the color of the '5' (gray, value 5) overwriting the color of the '4' (yellow, value 4) where they overlapped.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.20222222222222222,
+      "uncertainty": "The primary source of uncertainty was determining the exact pixel shapes for the 'glyphs'. The examples provided were inconsistent; for instance, the glyph for the value '1' was described as '1' and 'H' in instructions but appeared visually as an '8' or '0' in the example outputs. This required making assumptions about the intended shapes. I assumed the glyph for '1' is a hollow rectangle based on one of the examples. For glyphs '2' and '5', which did not appear in any example, I had to invent plausible pixel-art representations. Furthermore, adapting the '4' glyph to a region with a very different aspect ratio (14x4) was highly speculative. There was also ambiguity in the single-object rule; I followed the evidence from the example diffs (only change glyph pixels) over potentially conflicting wording in the test instructions ('on a ... background within its bounding box'). Finally, drawing an 'H' in a 3x2 region required an assumption about its minimal representation.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.20555555555555555,
+    "has_ground_truth": true
+  },
+  "T1": {
+    "test_idx": 1,
+    "ascending": {
+      "similarity": 0.24555555555555555,
+      "uncertainty": "The exact pixel patterns for the numeric glyphs had to be inferred, especially for sizes not present in the examples (like a '5' in a 3x2 area). The rule for 'containing' glyphs was also ambiguous; I assumed the outer glyph simplifies to a hollow rectangle to provide a clear drawing space for the inner glyph, based on the one complex example provided. The region coordinates given in the instructions did not always align perfectly with the visible partition lines, so I followed the explicit coordinates from the instructions.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.25555555555555554,
+      "uncertainty": "The training examples showed inconsistent patterns for the glyphs; some were numeric shapes (like '4' and '0'), while others were simple frames. The test instructions explicitly referred to numeric glyphs (e.g., '3' glyph, '2' glyph), so I assumed standard 5-pixel-wide pixel-art representations for these numbers. The 'containing' logic for nested glyphs was also ambiguous; I interpreted it as layering the glyphs on top of each other in the same bounding box, with the glyph corresponding to the lower-valued object color appearing on top.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.25555555555555554,
+    "has_ground_truth": true
+  }
+}

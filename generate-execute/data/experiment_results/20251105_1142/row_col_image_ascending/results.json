@@ -1,0 +1,75 @@
+{
+  "E0": {
+    "held_out_idx": 0,
+    "ascending": {
+      "similarity": 0.8875,
+      "uncertainty": "The instructions for partition P5, which is non-rectangular, were to create a spiral 'copying P2's pattern'. I interpreted this to mean generating a spiral within the bounding box of P5, using the same color sequence and spiral direction as P2, and then applying this pattern only to the cells that fall within P5's boundaries. I also interpreted 'copying a pattern' for the rectangular partition P4 to mean using the same color sequence and spiral direction as its counterpart P1, but adapting the spiral generation to P4's own dimensions and starting corner.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.8925,
+      "uncertainty": "The instructions for T0 did not explicitly mention the partition at R10:T16. However, the general instruction 'If S is empty, leave the partition unchanged' was sufficient to resolve this, as this partition contained no seeds and was composed entirely of the background color. I followed this general rule. The term 'symmetric layout' was potentially ambiguous as the partitions were not geometrically identical, but the instructions immediately clarified the specific inheritance rule to apply, which removed the ambiguity.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.8925
+  },
+  "E1": {
+    "held_out_idx": 1,
+    "ascending": {
+      "similarity": 0.555,
+      "uncertainty": "",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.555,
+      "uncertainty": "",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.555
+  },
+  "E2": {
+    "held_out_idx": 2,
+    "ascending": {
+      "similarity": 1.0,
+      "uncertainty": "",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 1.0,
+      "uncertainty": "",
+      "reasoning_content": null
+    },
+    "best_similarity": 1.0
+  },
+  "T0": {
+    "test_idx": 0,
+    "ascending": {
+      "similarity": 0.2911111111111111,
+      "uncertainty": "The instructions for test case T0 state that partition P17 is located at G27:I30 with an area of 12, leading to a flood-fill action. However, inspecting the input grid reveals that column G is a boundary in that region, and the actual partition containing the relevant seed (at I28) is H27:S30, which has an area of 48. According to the general rules, an area of 48 should result in a spiral pattern, not a flood-fill. Following the specific instruction to 'Apply the test case instructions precisely', I have performed the specified flood-fill action on the corrected partition area of H27:S30, assuming the action was intended despite the incorrect premise.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.29333333333333333,
+      "uncertainty": "The test instructions specified a partition P17 at G27:I30. Column G in this area (G27:G30) is part of a static boundary line (color 8), which the general rules state should remain unchanged. The instruction to 'Flood-fill' P17 created a conflict. I resolved this by assuming 'Flood-fill' applies only to non-boundary cells within the specified region, thus only changing cells in H27:I30. Additionally, the instruction for partition P7 defined a region R9:T14, which does not align with the larger visually-bounded area of S9:W14. I followed the explicit region from the instructions.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.29333333333333333,
+    "has_ground_truth": true
+  },
+  "T1": {
+    "test_idx": 1,
+    "ascending": {
+      "similarity": 0.42777777777777776,
+      "uncertainty": "",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.3844444444444444,
+      "uncertainty": "",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.42777777777777776,
+    "has_ground_truth": true,
+    "error-fixed": "setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (30,) + inhomogeneous part."
+  }
+}

@@ -1,0 +1,22 @@
+EXPERIMENT: Output Diversity Baseline - Multiple Sampling
+
+Purpose:
+This experiment measures output diversity when sampling multiple times with the same parameters
+(modality, order, temperature) without changing the training example order. This serves as a
+baseline to compare against order augmentation experiments.
+
+Configuration:
+- Modality: row_col_json_image
+- Order: ascending (fixed)
+- Temperature: 0.7
+- Number of trials: 4
+- Model: gemini/gemini-2.5-pro
+
+Hypothesis:
+Our paper claims that varying training example orders can produce more diverse results than
+simple multiple sampling. This experiment provides the baseline for that comparison.
+
+Expected Analysis:
+Compare the diversity of outputs across these 4 trials with the diversity
+observed when using different training example orders (ascending vs descending) in the
+cross-order experiment.

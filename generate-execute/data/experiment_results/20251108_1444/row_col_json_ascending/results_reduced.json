@@ -1,0 +1,34 @@
+{
+  "E0": {
+    "held_out_idx": 0,
+    "similarity": 0.855,
+    "uncertainty": "",
+    "reasoning_content": null
+  },
+  "E1": {
+    "held_out_idx": 1,
+    "similarity": 0.605,
+    "uncertainty": "The test case instructions mention three regions partitioned by the boundary color. However, inspection of the input grid reveals a fourth, bottom-left region of the fillable color (yellow) at spreadsheet range A14:J20. This region contains no seeds. Following the general instructions (Rule 3.a under 'Filling Logic'), which state that a region with no seeds remains unchanged, I have left this fourth region as is (filled with yellow). The specific instructions for the test case appear to have omitted this region.",
+    "reasoning_content": null
+  },
+  "E2": {
+    "held_out_idx": 2,
+    "similarity": 1.0,
+    "uncertainty": "",
+    "reasoning_content": null
+  },
+  "T0": {
+    "test_idx": 0,
+    "similarity": 0.5588888888888889,
+    "uncertainty": "The instructions for Test T0 contained contradictions. Step 3b stated that Region 2 (M1:T7 approx) had one seed (Magenta at M1) and should be filled with the pattern [6, 3]. However, inspection of the input grid reveals three seeds in this region: Magenta(6) at M1, Yellow(4) at N2, and Gray(5) at O3. The general instructions for multiple seeds dictate using an ordered list of all seeds, which would be [6, 4, 5]. I chose to follow the general rule, as it seemed more consistent with the overall logic described in the hypothesis. Additionally, step 3c located a seed for Region 3 at V22, which is outside the region; I assumed this was a typo for V2, which is the only seed inside that region.",
+    "reasoning_content": null,
+    "has_ground_truth": true
+  },
+  "T1": {
+    "test_idx": 1,
+    "similarity": 0.35777777777777775,
+    "uncertainty": "The instructions for Test T1, step 3.e, described Region 5 with the coordinate range 'I16:H30'. This is an invalid range and likely a typo. Based on the locations of the seeds for that region (I17, J18, K19), I assumed the region was the one bounded by columns H and Q, and rows 16 and 24 (approximately I17:P23), and proceeded with the transformation on that basis.",
+    "reasoning_content": null,
+    "has_ground_truth": true
+  }
+}

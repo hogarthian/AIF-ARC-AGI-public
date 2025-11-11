@@ -1,0 +1,104 @@
+{
+  "T0-bug-fix": {
+    "test_idx": 0,
+    "ascending": {
+      "similarity": 0.0,
+      "uncertainty": "The instructions did not explicitly define the connectivity rule (4-way vs. 8-way) for identifying 'contiguous regions' of a single color, or for defining the 'outermost layer' for the concentric fill pattern. I assumed 4-way connectivity (sharing an edge) for identifying the initial green regions, and 8-way connectivity (sharing an edge or corner) for determining the boundary of each concentric layer, as this interpretation is common for these types of grid transformations and produces visually consistent concentric patterns.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.0,
+      "uncertainty": "",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.0,
+    "has_ground_truth": false
+  },
+  "T1-bug-fix": {
+    "test_idx": 1,
+    "ascending": {
+      "similarity": 0.0,
+      "uncertainty": "I encountered two main points of ambiguity. First, the instruction for 'Region 5 (bottom-left, A17:H30)' appears to misidentify the region, as the specified seeds (I17, J18, K19) are adjacent to the teal area at I17:P30. I assumed I17:P30 was the correct region, which implied the existence of an unmentioned eighth region (A17:G30) that, having no seeds, remains unchanged. Second, the seed color order listed in the specific instructions for Region 1 ([green(3), yellow(4)]) and Region 3 ([yellow(4), gray(5), magenta(6)]) contradicts the general rule of ordering seeds by position (top-to-bottom, left-to-right). I followed the general rule, resulting in the orders [yellow(4), green(3)] for Region 1 and [magenta(6), gray(5), yellow(4)] for Region 3, assuming the specific instructions had an error.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.0,
+      "uncertainty": "The instructions for determining the seed color order for Region 1 and Region 3 contradicted the general rule of 'top-to-bottom, left-to-right'. I followed the specific instructions for those regions as they were more direct. Additionally, the coordinates for Region 5 were given as A17:H30, but column H is a wall; I assumed the fillable region was A17:G30, which is consistent with the visual grid.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.0,
+    "has_ground_truth": false
+  },
+  "E0": {
+    "held_out_idx": 0,
+    "ascending": {
+      "similarity": 0.7975,
+      "uncertainty": "",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.835,
+      "uncertainty": "",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.835
+  },
+  "E1": {
+    "held_out_idx": 1,
+    "ascending": {
+      "similarity": 0.55,
+      "uncertainty": "",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.58,
+      "uncertainty": "",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.58
+  },
+  "E2": {
+    "held_out_idx": 2,
+    "ascending": {
+      "similarity": 0.8692307692307693,
+      "uncertainty": "The phrase 'concentric rectangular pattern' in the working hypothesis could be potentially misleading when applied to a non-rectangular region with an internal hole, as was the case for Region 1 in the test example. I interpreted this based on the more general instruction to 'iteratively identify the outermost layer of cells in the remaining unfilled portion of the region' (the 'onion-peeling' method), which worked successfully. The instructions were clear enough to resolve this potential ambiguity.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 1.0,
+      "uncertainty": "",
+      "reasoning_content": null
+    },
+    "best_similarity": 1.0
+  },
+  "T0": {
+    "test_idx": 0,
+    "ascending": {
+      "similarity": 0.45222222222222225,
+      "uncertainty": "",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.5811111111111111,
+      "uncertainty": "The instructions for the test case identify six specific \"fillable regions\" of green. However, based on the general rule that regions are contiguous areas of the fillable color, the input grid appears to contain fewer, larger, and more complex green regions. For instance, the region described as \"inner-middle, M16:T25\" is contiguous with other green cells and not an isolated region. I have proceeded by strictly adhering to the specified regions as defined in the test case instructions (e.g., \"Region 1\" is all green cells in columns A-K, \"Region 2\" is all green cells in the M1:T7 rectangle, etc.), and applied the corresponding transformations only to the green cells within those specific geometric boundaries. All other cells, including green cells outside these six defined areas, were left unchanged. This assumes the test case instructions' definitions of regions override the general connectivity rule.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.5811111111111111,
+    "has_ground_truth": true
+  },
+  "T1": {
+    "test_idx": 1,
+    "ascending": {
+      "similarity": 0.2677777777777778,
+      "uncertainty": "The instructions for seed ordering in Test Case T1, for Region 1 and Region 3, provide a specific color list that contradicts the general rule of ordering seeds by position (top-to-bottom, left-to-right). I followed the specific color lists provided in the test case instructions as they take precedence. Also, the region definition for Region 5 was given as 'A17:H30', which is slightly ambiguous as the wall is at column H. I interpreted this to mean the fillable area 'A17:G30' bordered by the wall at H, which was consistent with the provided seed locations.",
+      "reasoning_content": null
+    },
+    "descending": {
+      "similarity": 0.3333333333333333,
+      "uncertainty": "The instructions for ordering seed colors were inconsistent. The general instructions state to order them by position (top-to-bottom, left-to-right). However, the specific color lists provided for the test case regions sometimes followed this rule (Regions 4, 5, 7) and sometimes followed a different rule of sorting by color value (Regions 1, 3). I followed the specific color lists provided for each region in the test case instructions. Additionally, the coordinate range for Region 5 was given as A17:H30, but the fillable region is A17:G30 as column H is a wall; I assumed this was a typo and proceeded with the correct region.",
+      "reasoning_content": null
+    },
+    "best_similarity": 0.3333333333333333,
+    "has_ground_truth": true
+  }
+}
